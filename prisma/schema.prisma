@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  senhaHash String
+  nome      String?
+  conteudos Conteudo[]
+  simulados Simulado[]
+  createdAt DateTime   @default(now())
+}
+
+// Um "Conteudo" = um PDF/material enviado pelo usuário.
+// O PDF em si não é guardado permanentemente; guardamos o que a IA extraiu.
+model Conteudo {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo    String
+  descricao String?
+  assuntos  Assunto[]
+  cards     Card[]
+  simulados Simulado[]
+  createdAt DateTime   @default(now())
+}
+
+// Assuntos mapeados dentro de um conteúdo (ex: "Sanções Disciplinares")
+model Assunto {
+  id         String    @id @default(cuid())
+  conteudoId String
+  conteudo   Conteudo  @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  nome       String
+  ordem      Int       @default(0)
+  blocosQA   BlocoQA[]
+  createdAt  DateTime  @default(now())
+}
+
+// Flashcard
+model Card {
+  id          String   @id @default(cuid())
+  conteudoId  String
+  conteudo    Conteudo @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  assuntoNome String?
+  frente      String
+  verso       String
+  createdAt   DateTime @default(now())
+}
+
+// Bloco de perguntas de um assunto: contém as variações
+model BlocoQA {
+  id        String       @id @default(cuid())
+  assuntoId String
+  assunto   Assunto      @relation(fields: [assuntoId], references: [id], onDelete: Cascade)
+  idBloco   Int
+  variacoes VariacaoQA[]
+  createdAt DateTime     @default(now())
+}
+
+// Variação de pergunta/resposta (mínimo 3 por bloco; reformular adiciona +1)
+model VariacaoQA {
+  id        String   @id @default(cuid())
+  blocoId   String
+  bloco     BlocoQA  @relation(fields: [blocoId], references: [id], onDelete: Cascade)
+  versao    Int
+  pergunta  String
+  resposta  String
+  createdAt DateTime @default(now())
+}
+
+model Simulado {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conteudoId   String
+  conteudo     Conteudo          @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  titulo       String
+  assuntos     String[]
+  qtdQuestoes  Int
+  tempoLimite  Int // segundos
+  status       String            @default("em_andamento") // em_andamento | finalizado
+  nota         Float?
+  acertos      Int?
+  total        Int?
+  questoes     SimuladoQuestao[]
+  iniciadoEm   DateTime          @default(now())
+  finalizadoEm DateTime?
+}
+
+model SimuladoQuestao {
+  id              String   @id @default(cuid())
+  simuladoId      String
+  simulado        Simulado @relation(fields: [simuladoId], references: [id], onDelete: Cascade)
+  ordem           Int
+  enunciado       String
+  alternativas    Json // { "A": "...", "B": "...", ..., "E": "..." }
+  gabarito        String // "A".."E"
+  justificativa   String
+  respostaUsuario String?
+  correta         Boolean?
+  feedbackIA      String? // avaliação textual opcional da IA (persistida)
+}

@@ -1,0 +1,233 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import Modal from '@/components/ui/Modal';
+import Spinner from '@/components/ui/Spinner';
+import type { ConteudoResumo } from '@/types';
+
+interface SimuladoResumo {
+  id: string;
+  titulo: string;
+  conteudoTitulo: string;
+  qtdQuestoes: number;
+  tempoLimite: number;
+  status: string;
+  iniciadoEm: string;
+}
+
+const MIN_POR_QUESTAO = 3; // sugestão automática de tempo
+
+export default function SimuladosPage() {
+  const router = useRouter();
+  const [simulados, setSimulados] = useState<SimuladoResumo[]>([]);
+  const [conteudos, setConteudos] = useState<ConteudoResumo[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  // wizard de criação
+  const [aberto, setAberto] = useState(false);
+  const [conteudoId, setConteudoId] = useState('');
+  const [assuntosSel, setAssuntosSel] = useState<Set<string>>(new Set());
+  const [qtd, setQtd] = useState(10);
+  const [tempoMin, setTempoMin] = useState(30);
+  const [tempoEditado, setTempoEditado] = useState(false);
+  const [gerando, setGerando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const carregar = useCallback(async () => {
+    const [rSim, rCon] = await Promise.all([
+      fetch('/api/simulados?status=em_andamento'),
+      fetch('/api/conteudos'),
+    ]);
+    if (rSim.ok) setSimulados((await rSim.json()).simulados);
+    if (rCon.ok) setConteudos((await rCon.json()).conteudos);
+    setCarregando(false);
+  }, []);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  // tempo sugerido acompanha a quantidade, até o usuário editar manualmente
+  useEffect(() => {
+    if (!tempoEditado) setTempoMin(qtd * MIN_POR_QUESTAO);
+  }, [qtd, tempoEditado]);
+
+  const conteudoAtual = conteudos.find((c) => c.id === conteudoId);
+
+  function abrirWizard() {
+    setConteudoId('');
+    setAssuntosSel(new Set());
+    setQtd(10);
+    setTempoMin(10 * MIN_POR_QUESTAO);
+    setTempoEditado(false);
+    setErro('');
+    setAberto(true);
+  }
+
+  async function criar() {
+    if (!conteudoId || assuntosSel.size === 0) {
+      setErro('Escolha um conteúdo e pelo menos um assunto.');
+      return;
+    }
+    setErro('');
+    setGerando(true);
+    const res = await fetch('/api/simulados', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conteudoId,
+        assuntos: Array.from(assuntosSel),
+        qtdQuestoes: qtd,
+        tempoLimite: tempoMin * 60,
+      }),
+    });
+    setGerando(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErro(data.error || 'Falha ao gerar o simulado.');
+      return;
+    }
+    const { simulado } = await res.json();
+    router.push(`/simulados/${simulado.id}`);
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-terra-800">Simulados</h1>
+        <button className="btn-primario" onClick={abrirWizard}>
+          + Novo simulado
+        </button>
+      </div>
+
+      {carregando ? (
+        <Spinner texto="Carregando…" />
+      ) : simulados.length === 0 ? (
+        <div className="cartao text-center text-terra-500">
+          <p className="mb-2 text-3xl">📝</p>
+          <p>
+            Nenhum simulado em andamento. Crie um novo ou veja o{' '}
+            <Link href="/simulados/historico" className="text-salvia-600 hover:underline">
+              histórico
+            </Link>
+            .
+          </p>
+        </div>
+      ) : (
+        <motion.div
+          className="space-y-3"
+          initial="oculto"
+          animate="visivel"
+          variants={{ visivel: { transition: { staggerChildren: 0.06 } } }}
+        >
+          {simulados.map((s) => (
+            <motion.div
+              key={s.id}
+              className="cartao flex flex-wrap items-center gap-3"
+              variants={{ oculto: { opacity: 0, y: 12 }, visivel: { opacity: 1, y: 0 } }}
+            >
+              <div className="flex-1">
+                <p className="font-semibold text-terra-900">{s.titulo}</p>
+                <p className="text-sm text-terra-500">
+                  {s.qtdQuestoes} questões · {Math.round(s.tempoLimite / 60)} min
+                </p>
+              </div>
+              <Link href={`/simulados/${s.id}`} className="btn-primario">
+                Continuar →
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      <Modal aberto={aberto} onFechar={() => !gerando && setAberto(false)} titulo="Novo simulado" largura="max-w-xl">
+        {gerando ? (
+          <Spinner texto="A IA está montando seu simulado estilo FUNDATEC… (pode levar um minuto)" />
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-terra-700">Conteúdo</label>
+              <select
+                className="campo"
+                value={conteudoId}
+                onChange={(e) => {
+                  setConteudoId(e.target.value);
+                  setAssuntosSel(new Set());
+                }}
+              >
+                <option value="">Selecione…</option>
+                {conteudos.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.titulo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {conteudoAtual && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-terra-700">Assuntos do simulado</label>
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg bg-creme-200 p-2">
+                  {conteudoAtual.assuntos.map((a) => (
+                    <label key={a.id} className="flex cursor-pointer items-center gap-2 rounded p-1.5 text-sm hover:bg-creme-300">
+                      <input
+                        type="checkbox"
+                        checked={assuntosSel.has(a.nome)}
+                        onChange={() =>
+                          setAssuntosSel((prev) => {
+                            const novo = new Set(prev);
+                            if (novo.has(a.nome)) novo.delete(a.nome);
+                            else novo.add(a.nome);
+                            return novo;
+                          })
+                        }
+                      />
+                      {a.nome}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-terra-700">Questões (1–30)</label>
+                <input
+                  type="number"
+                  className="campo"
+                  min={1}
+                  max={30}
+                  value={qtd}
+                  onChange={(e) => setQtd(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-terra-700">
+                  Tempo (min) <span className="text-xs text-terra-500">— sugerido: {qtd * MIN_POR_QUESTAO}</span>
+                </label>
+                <input
+                  type="number"
+                  className="campo"
+                  min={1}
+                  value={tempoMin}
+                  onChange={(e) => {
+                    setTempoEditado(true);
+                    setTempoMin(Math.max(1, Number(e.target.value) || 1));
+                  }}
+                />
+              </div>
+            </div>
+
+            {erro && <p className="text-sm text-erro">{erro}</p>}
+            <button className="btn-primario w-full" onClick={criar}>
+              Gerar simulado ✨
+            </button>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
