@@ -8,13 +8,14 @@ import Cronometro from '@/components/Cronometro';
 import QuestaoSimulado from '@/components/QuestaoSimulado';
 import Spinner from '@/components/ui/Spinner';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { IconeSetaEsquerda, IconeMedalha } from '@/components/ui/Icones';
 import type { SimuladoDTO } from '@/types';
 
 function mensagemResultado(nota: number): string {
-  if (nota >= 9) return 'Excelente! Você está prontíssimo(a) para a prova! 🏆';
-  if (nota >= 7) return 'Muito bom! Continue nesse ritmo que a aprovação vem! 💪';
-  if (nota >= 5) return 'Bom começo! Revise os erros e refaça — é assim que se aprende! 📈';
-  return 'Não desanime! Cada erro agora é um acerto na prova. Revise e tente de novo! 🌱';
+  if (nota >= 9) return 'Excelente! Você está prontíssimo(a) para a prova!';
+  if (nota >= 7) return 'Muito bom! Continue nesse ritmo que a aprovação vem!';
+  if (nota >= 5) return 'Bom começo! Revise os erros e refaça — é assim que se aprende!';
+  return 'Não desanime! Cada erro agora é um acerto na prova. Revise e tente de novo!';
 }
 
 export default function SimuladoPage() {
@@ -77,11 +78,11 @@ export default function SimuladoPage() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link
           href={finalizado ? '/simulados/historico' : '/simulados'}
-          className="text-sm text-salvia-600 hover:underline"
+          className="flex min-h-[44px] items-center gap-1 text-sm font-medium text-salvia-600 hover:underline"
         >
-          ← {finalizado ? 'Histórico' : 'Simulados'}
+          <IconeSetaEsquerda className="h-4 w-4" /> {finalizado ? 'Histórico' : 'Simulados'}
         </Link>
-        <h1 className="text-xl font-bold text-terra-800">{simulado.titulo}</h1>
+        <h1 className="font-display text-2xl font-bold text-terra-900">{simulado.titulo}</h1>
       </div>
 
       {finalizado ? (
@@ -90,24 +91,31 @@ export default function SimuladoPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <p className="text-sm uppercase tracking-wide text-terra-500">Sua nota</p>
-          <p className={`my-1 text-5xl font-bold ${(simulado.nota ?? 0) >= 5 ? 'text-acerto' : 'text-erro'}`}>
+          <p className="font-display text-sm uppercase tracking-widest text-terra-500">Sua nota</p>
+          <p
+            className={`my-1 font-display text-6xl font-bold tabular-nums ${
+              (simulado.nota ?? 0) >= 5 ? 'text-acerto' : 'text-erro'
+            }`}
+          >
             {simulado.nota?.toFixed(1)}
           </p>
-          <p className="mb-2 text-terra-700">
+          <p className="mb-2 tabular-nums text-terra-700">
             {simulado.acertos} de {simulado.total} questões corretas
           </p>
-          <p className="text-sm text-terra-500">{mensagemResultado(simulado.nota ?? 0)}</p>
+          <p className="text-sm text-terra-500">
+            <span className="grifo">{mensagemResultado(simulado.nota ?? 0)}</span>
+          </p>
           {!simulado.questoes.every((q) => q.feedbackIA) && (
             <button className="btn-secundario mt-4 text-sm" onClick={pedirAvaliacaoIA} disabled={avaliando}>
-              {avaliando ? 'O professor IA está corrigindo…' : '🎓 Pedir avaliação detalhada da IA'}
+              <IconeMedalha className="h-[18px] w-[18px] text-ambar-600" />
+              {avaliando ? 'O professor IA está corrigindo…' : 'Pedir avaliação detalhada da IA'}
             </button>
           )}
         </motion.div>
       ) : (
-        <div className="sticky top-16 z-30 mb-6 flex items-center justify-between rounded-xl border border-terra-500/15 bg-creme-50/95 p-3 shadow-sm backdrop-blur">
+        <div className="sticky top-16 z-30 mb-6 flex items-center justify-between gap-2 rounded-2xl border border-terra-500/15 bg-creme-50/95 p-3 shadow-carta backdrop-blur">
           <Cronometro segundosIniciais={restante} onEsgotar={() => finalizar(true)} />
-          <span className="text-sm text-terra-700">
+          <span className="text-sm tabular-nums text-terra-700">
             {respondidas}/{simulado.questoes.length} respondidas
           </span>
           <button className="btn-primario" onClick={() => setConfirmFinalizar(true)} disabled={finalizando}>

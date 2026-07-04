@@ -6,6 +6,18 @@ import { motion } from 'framer-motion';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import {
+  IconeMais,
+  IconeLivro,
+  IconeEditar,
+  IconeLixeira,
+  IconeCartas,
+  IconeConversa,
+  IconeBrilho,
+  IconeCheck,
+  IconeX,
+  IconeSetaEsquerda,
+} from '@/components/ui/Icones';
 import type { AssuntoMapeado, ConteudoResumo } from '@/types';
 
 const MAX_PDF_MB = 4;
@@ -183,18 +195,24 @@ export default function ConteudosPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-terra-800">Meus Conteúdos</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-bold text-terra-900">
+          Meus <span className="grifo">Conteúdos</span>
+        </h1>
         <button className="btn-primario" onClick={abrirWizard}>
-          + Adicionar conteúdo
+          <IconeMais className="h-5 w-5" />
+          <span className="hidden sm:inline">Adicionar conteúdo</span>
+          <span className="sm:hidden">Adicionar</span>
         </button>
       </div>
 
       {carregando ? (
         <Spinner texto="Carregando conteúdos…" />
       ) : conteudos.length === 0 ? (
-        <div className="cartao text-center text-terra-500">
-          <p className="mb-2 text-3xl">🌱</p>
+        <div className="cartao flex flex-col items-center py-10 text-center text-terra-500">
+          <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-salvia-100 text-salvia-600">
+            <IconeLivro className="h-7 w-7" />
+          </span>
           <p>Nenhum conteúdo ainda. Envie seu primeiro PDF e comece a estudar!</p>
         </div>
       ) : (
@@ -211,25 +229,27 @@ export default function ConteudosPage() {
               variants={{ oculto: { opacity: 0, y: 12 }, visivel: { opacity: 1, y: 0 } }}
             >
               <div className="mb-2 flex items-start justify-between gap-2">
-                <h2 className="font-semibold text-terra-900">{c.titulo}</h2>
-                <div className="flex shrink-0 gap-1 text-sm">
+                <h2 className="font-display text-lg font-semibold text-terra-900">{c.titulo}</h2>
+                <div className="flex shrink-0 gap-0.5">
                   <button
-                    className="rounded px-2 py-1 text-terra-500 hover:bg-creme-200"
+                    className="btn-icone"
                     onClick={() => {
                       setEditando(c);
                       setEditTitulo(c.titulo);
                       setEditDescricao(c.descricao || '');
                     }}
+                    aria-label={`Editar ${c.titulo}`}
                     title="Editar"
                   >
-                    ✏️
+                    <IconeEditar className="h-[18px] w-[18px]" />
                   </button>
                   <button
-                    className="rounded px-2 py-1 text-terra-500 hover:bg-erro/10"
+                    className="btn-icone hover:!bg-erro/10 hover:!text-erro"
                     onClick={() => setDeletando(c)}
+                    aria-label={`Deletar ${c.titulo}`}
                     title="Deletar"
                   >
-                    🗑️
+                    <IconeLixeira className="h-[18px] w-[18px]" />
                   </button>
                 </div>
               </div>
@@ -238,11 +258,11 @@ export default function ConteudosPage() {
                 {c._count.assuntos} assuntos · {c._count.cards} cards · {c._count.simulados} simulados
               </p>
               <div className="mt-auto flex gap-2">
-                <Link href={`/conteudos/${c.id}/cards`} className="btn-secundario flex-1 text-center text-sm">
-                  🃏 Flashcards
+                <Link href={`/conteudos/${c.id}/cards`} className="btn-secundario flex-1 text-sm">
+                  <IconeCartas className="h-[18px] w-[18px] text-salvia-600" /> Flashcards
                 </Link>
-                <Link href={`/conteudos/${c.id}/qa`} className="btn-secundario flex-1 text-center text-sm">
-                  💬 Q&A
+                <Link href={`/conteudos/${c.id}/qa`} className="btn-secundario flex-1 text-sm">
+                  <IconeConversa className="h-[18px] w-[18px] text-salvia-600" /> Q&A
                 </Link>
               </div>
             </motion.div>
@@ -296,11 +316,12 @@ export default function ConteudosPage() {
                     }
                   />
                   <button
-                    className="shrink-0 rounded px-2 text-terra-500 hover:text-erro"
+                    className="btn-icone !h-9 !w-9 shrink-0 hover:!text-erro"
                     onClick={() => setAssuntos((prev) => prev.filter((_, j) => j !== i))}
+                    aria-label={`Remover assunto ${a.nome || i + 1}`}
                     title="Remover assunto"
                   >
-                    ✕
+                    <IconeX className="h-4 w-4" />
                   </button>
                 </li>
               ))}
@@ -311,23 +332,23 @@ export default function ConteudosPage() {
             >
               + Adicionar assunto manualmente
             </button>
-            <div className="flex gap-4 rounded-lg bg-creme-200 p-3">
-              <label className="flex items-center gap-2 text-sm text-terra-800">
+            <div className="flex flex-wrap gap-4 rounded-xl bg-creme-200 p-3">
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-terra-800">
                 <input type="checkbox" checked={gerarCards} onChange={(e) => setGerarCards(e.target.checked)} />
-                🃏 Flashcards
+                <IconeCartas className="h-[18px] w-[18px] text-salvia-600" /> Flashcards
               </label>
-              <label className="flex items-center gap-2 text-sm text-terra-800">
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-terra-800">
                 <input type="checkbox" checked={gerarQA} onChange={(e) => setGerarQA(e.target.checked)} />
-                💬 Perguntas & Respostas
+                <IconeConversa className="h-[18px] w-[18px] text-salvia-600" /> Perguntas & Respostas
               </label>
             </div>
             {erro && <p className="text-sm text-erro">{erro}</p>}
             <div className="flex gap-3">
               <button className="btn-secundario flex-1" onClick={() => setEtapa('upload')}>
-                ← Voltar
+                <IconeSetaEsquerda className="h-[18px] w-[18px]" /> Voltar
               </button>
               <button className="btn-primario flex-1" onClick={gerarMaterial}>
-                Gerar material ✨
+                <IconeBrilho className="h-[18px] w-[18px]" /> Gerar material
               </button>
             </div>
           </div>
@@ -336,9 +357,13 @@ export default function ConteudosPage() {
         {etapa === 'gerando' && <Spinner texto={progresso} />}
 
         {etapa === 'pronto' && (
-          <div className="space-y-4 text-center">
-            <p className="text-4xl">🎉</p>
-            <p className="font-medium text-terra-800">Material gerado e salvo! Bons estudos!</p>
+          <div className="flex flex-col items-center gap-4 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-salvia-100 text-acerto">
+              <IconeCheck className="h-7 w-7" />
+            </span>
+            <p className="font-display text-lg font-semibold text-terra-900">
+              Material gerado e salvo. <span className="grifo">Bons estudos!</span>
+            </p>
             <button className="btn-primario w-full" onClick={() => setWizardAberto(false)}>
               Fechar
             </button>

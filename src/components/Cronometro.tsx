@@ -40,12 +40,25 @@ export default function Cronometro({ segundosIniciais, onEsgotar }: CronometroPr
 
   return (
     <div
-      className={`rounded-lg px-4 py-2 font-mono text-lg font-semibold tabular-nums ${
+      className={`flex items-center gap-2 rounded-xl px-4 py-2 font-mono text-lg font-semibold tabular-nums ${
         urgente ? 'animate-pulse bg-erro/10 text-erro' : 'bg-salvia-100 text-salvia-700'
       }`}
       aria-live="polite"
     >
-      ⏱ {formatar(restante)}
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-5 w-5"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+      {formatar(restante)}
     </div>
   );
 }

@@ -1,41 +1,54 @@
 import type { Config } from 'tailwindcss';
 
-// Paleta aconchegante de estudo: creme, âmbar, verde-sálvia, marrom terroso.
+// Design system "papel de prova": paleta quente ancorada no universo de estudo
+// (papel creme, tinta sépia, sálvia como cor de ação, âmbar de marca-texto).
+// Tokens semânticos — nunca hex solto nos componentes.
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
       colors: {
         creme: {
-          50: '#fdfbf7',
-          100: '#faf6ed',
-          200: '#f3ecdc',
-          300: '#e9ddc4',
+          50: '#fdfbf6',
+          100: '#f8f3e9',
+          200: '#f0e8d8',
+          300: '#e3d6bc',
         },
         ambar: {
-          400: '#d9a441',
-          500: '#c98f2b',
-          600: '#a97522',
-          700: '#8a5e1c',
+          200: '#fbe79a',
+          400: '#e9b949',
+          500: '#d19e2f',
+          600: '#a97b22',
+          700: '#85601c',
         },
         salvia: {
-          100: '#e6ede4',
-          300: '#b4c7ae',
-          500: '#7d9a74',
-          600: '#5f7d57',
-          700: '#4b6345',
+          100: '#e7ede3',
+          300: '#b7c9ae',
+          500: '#6f8f63',
+          600: '#52704a',
+          700: '#405a3a',
+          800: '#33482e',
         },
         terra: {
-          500: '#8c6f56',
-          700: '#5e4a38',
-          800: '#463729',
-          900: '#332821',
+          400: '#a98f74',
+          500: '#8a6d53',
+          700: '#5c4936',
+          800: '#43352a',
+          900: '#2e241c',
         },
-        erro: '#b5544a',
-        acerto: '#5f7d57',
+        erro: '#a8453a',
+        acerto: '#4e7d46',
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        carta: '0 1px 2px rgba(46, 36, 28, 0.06), 0 4px 12px rgba(46, 36, 28, 0.05)',
+        'carta-alta': '0 2px 4px rgba(46, 36, 28, 0.08), 0 12px 28px rgba(46, 36, 28, 0.1)',
+      },
+      transitionDuration: {
+        DEFAULT: '150ms',
       },
     },
   },

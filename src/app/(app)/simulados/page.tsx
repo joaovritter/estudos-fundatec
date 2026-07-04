@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
+import { IconeMais, IconeProva, IconeSetaDireita, IconeBrilho } from '@/components/ui/Icones';
 import type { ConteudoResumo } from '@/types';
 
 interface SimuladoResumo {
@@ -96,18 +97,24 @@ export default function SimuladosPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-terra-800">Simulados</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-bold text-terra-900">
+          <span className="grifo">Simulados</span>
+        </h1>
         <button className="btn-primario" onClick={abrirWizard}>
-          + Novo simulado
+          <IconeMais className="h-5 w-5" />
+          <span className="hidden sm:inline">Novo simulado</span>
+          <span className="sm:hidden">Novo</span>
         </button>
       </div>
 
       {carregando ? (
         <Spinner texto="Carregando…" />
       ) : simulados.length === 0 ? (
-        <div className="cartao text-center text-terra-500">
-          <p className="mb-2 text-3xl">📝</p>
+        <div className="cartao flex flex-col items-center py-10 text-center text-terra-500">
+          <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-salvia-100 text-salvia-600">
+            <IconeProva className="h-7 w-7" />
+          </span>
           <p>
             Nenhum simulado em andamento. Crie um novo ou veja o{' '}
             <Link href="/simulados/historico" className="text-salvia-600 hover:underline">
@@ -130,13 +137,13 @@ export default function SimuladosPage() {
               variants={{ oculto: { opacity: 0, y: 12 }, visivel: { opacity: 1, y: 0 } }}
             >
               <div className="flex-1">
-                <p className="font-semibold text-terra-900">{s.titulo}</p>
-                <p className="text-sm text-terra-500">
+                <p className="font-display font-semibold text-terra-900">{s.titulo}</p>
+                <p className="text-sm tabular-nums text-terra-500">
                   {s.qtdQuestoes} questões · {Math.round(s.tempoLimite / 60)} min
                 </p>
               </div>
               <Link href={`/simulados/${s.id}`} className="btn-primario">
-                Continuar →
+                Continuar <IconeSetaDireita className="h-[18px] w-[18px]" />
               </Link>
             </motion.div>
           ))}
@@ -223,7 +230,7 @@ export default function SimuladosPage() {
 
             {erro && <p className="text-sm text-erro">{erro}</p>}
             <button className="btn-primario w-full" onClick={criar}>
-              Gerar simulado ✨
+              <IconeBrilho className="h-[18px] w-[18px]" /> Gerar simulado
             </button>
           </div>
         )}

@@ -29,7 +29,7 @@ export default function Modal({ aberto, onFechar, titulo, children, largura = 'm
             transition={{ duration: 0.18 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {titulo && <h2 className="mb-4 text-lg font-semibold text-terra-800">{titulo}</h2>}
+            {titulo && <h2 className="mb-4 font-display text-xl font-semibold text-terra-900">{titulo}</h2>}
             {children}
           </motion.div>
         </motion.div>

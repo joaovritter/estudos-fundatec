@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { LogoMarca } from '@/components/ui/Icones';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +35,10 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="mb-1 text-center text-2xl font-bold text-salvia-700">📚 Motor de Estudos</h1>
+        <LogoMarca className="mx-auto mb-3 h-10 w-10 text-ambar-600" />
+        <h1 className="mb-1 text-center font-display text-3xl font-bold text-terra-900">
+          Motor de <span className="grifo">Estudos</span>
+        </h1>
         <p className="mb-6 text-center text-sm text-terra-500">Estudos inteligentes estilo FUNDATEC</p>
 
         <form onSubmit={entrar} className="space-y-4">

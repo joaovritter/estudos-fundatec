@@ -5,6 +5,12 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import Spinner from '@/components/ui/Spinner';
+import {
+  IconeSetaEsquerda,
+  IconeConversa,
+  IconeOlho,
+  IconeGirar,
+} from '@/components/ui/Icones';
 import type { BlocoDTO } from '@/types';
 
 interface AssuntoInfo {
@@ -105,15 +111,22 @@ export default function QAPage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Link href="/conteudos" className="text-sm text-salvia-600 hover:underline">
-          ← Conteúdos
+        <Link
+          href="/conteudos"
+          className="flex min-h-[44px] items-center gap-1 text-sm font-medium text-salvia-600 hover:underline"
+        >
+          <IconeSetaEsquerda className="h-4 w-4" /> Conteúdos
         </Link>
-        <h1 className="text-xl font-bold text-terra-800">💬 {titulo}</h1>
+        <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-terra-900">
+          <IconeConversa className="h-6 w-6 text-ambar-600" /> {titulo}
+        </h1>
       </div>
 
       {!estudando ? (
         <div className="cartao mx-auto max-w-xl">
-          <h2 className="mb-3 font-semibold text-terra-800">Quais assuntos você quer estudar?</h2>
+          <h2 className="mb-3 font-display text-lg font-semibold text-terra-900">
+            Quais assuntos você quer <span className="grifo">estudar</span>?
+          </h2>
           {assuntos.filter((a) => a._count.blocosQA > 0).length === 0 ? (
             <p className="text-terra-500">Este conteúdo ainda não tem perguntas geradas.</p>
           ) : (
@@ -148,8 +161,11 @@ export default function QAPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <button className="text-sm text-salvia-600 hover:underline" onClick={() => setEstudando(false)}>
-            ← Trocar assuntos
+          <button
+            className="flex min-h-[44px] items-center gap-1 text-sm font-medium text-salvia-600 hover:underline"
+            onClick={() => setEstudando(false)}
+          >
+            <IconeSetaEsquerda className="h-4 w-4" /> Trocar assuntos
           </button>
 
           <motion.div
@@ -170,21 +186,21 @@ export default function QAPage() {
                   className="cartao"
                   variants={{ oculto: { opacity: 0, y: 12 }, visivel: { opacity: 1, y: 0 } }}
                 >
-                  <div className="mb-2 flex items-center justify-between text-xs text-terra-500">
-                    <span>
+                  <div className="mb-2 flex items-center justify-between gap-2 text-xs text-terra-500">
+                    <span className="rounded-full bg-creme-200 px-2.5 py-1 font-medium">
                       {bloco.assuntoNome} · Bloco {bloco.idBloco}
                     </span>
-                    <span>
-                      Variação {iVar + 1}/{bloco.variacoes.length}
+                    <span className="font-mono tabular-nums">
+                      variação {iVar + 1}/{bloco.variacoes.length}
                     </span>
                   </div>
-                  <p className="mb-3 font-medium text-terra-900">{variacao.pergunta}</p>
+                  <p className="mb-3 font-medium leading-relaxed text-terra-900">{variacao.pergunta}</p>
 
                   <AnimatePresence mode="wait">
                     {revelada && (
                       <motion.div
                         key={variacao.id}
-                        className="mb-3 rounded-lg bg-salvia-100 p-3 text-terra-800"
+                        className="mb-3 rounded-xl border-l-4 border-salvia-500 bg-salvia-100/70 p-3 leading-relaxed text-terra-800"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
@@ -206,7 +222,8 @@ export default function QAPage() {
                         })
                       }
                     >
-                      {revelada ? 'Ocultar resposta' : '👁 Revelar resposta'}
+                      <IconeOlho className="h-[18px] w-[18px] text-salvia-600" />
+                      {revelada ? 'Ocultar resposta' : 'Revelar resposta'}
                     </button>
                     <button
                       className="btn-secundario flex-1 text-sm"
@@ -214,7 +231,8 @@ export default function QAPage() {
                       disabled={reformulando === bloco.id}
                       title="Mostra outra variação; se esgotaram, a IA gera uma nova"
                     >
-                      {reformulando === bloco.id ? 'Gerando nova…' : '🔄 Reformular'}
+                      <IconeGirar className="h-[18px] w-[18px] text-ambar-600" />
+                      {reformulando === bloco.id ? 'Gerando nova…' : 'Reformular'}
                     </button>
                   </div>
                 </motion.div>
