@@ -9,6 +9,7 @@ import QuestaoSimulado from '@/components/QuestaoSimulado';
 import Spinner from '@/components/ui/Spinner';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { IconeSetaEsquerda, IconeMedalha } from '@/components/ui/Icones';
+import { INFO_NIVEL } from '@/lib/dificuldade';
 import type { SimuladoDTO } from '@/types';
 
 function mensagemResultado(nota: number): string {
@@ -83,6 +84,11 @@ export default function SimuladoPage() {
           <IconeSetaEsquerda className="h-4 w-4" /> {finalizado ? 'Histórico' : 'Simulados'}
         </Link>
         <h1 className="font-display text-2xl font-bold text-terra-900">{simulado.titulo}</h1>
+        <span
+          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${INFO_NIVEL[simulado.dificuldade]?.badge ?? INFO_NIVEL.medio.badge}`}
+        >
+          {INFO_NIVEL[simulado.dificuldade]?.rotulo ?? 'Médio'}
+        </span>
       </div>
 
       {finalizado ? (

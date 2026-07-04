@@ -26,6 +26,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       assuntos: s.assuntos,
       qtdQuestoes: s.qtdQuestoes,
       tempoLimite: s.tempoLimite,
+      dificuldade: s.dificuldade,
       status: s.status,
       nota: s.nota,
       acertos: s.acertos,

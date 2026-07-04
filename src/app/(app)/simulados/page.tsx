@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
 import BarraProgresso from '@/components/ui/BarraProgresso';
 import { IconeMais, IconeProva, IconeSetaDireita, IconeBrilho } from '@/components/ui/Icones';
+import { NIVEIS, INFO_NIVEL, type Nivel } from '@/lib/dificuldade';
 import type { ConteudoResumo } from '@/types';
 
 interface SimuladoResumo {
@@ -16,6 +17,7 @@ interface SimuladoResumo {
   conteudoTitulo: string;
   qtdQuestoes: number;
   tempoLimite: number;
+  dificuldade: Nivel;
   status: string;
   iniciadoEm: string;
 }
@@ -33,6 +35,7 @@ export default function SimuladosPage() {
   const [conteudoId, setConteudoId] = useState('');
   const [assuntosSel, setAssuntosSel] = useState<Set<string>>(new Set());
   const [qtd, setQtd] = useState(10);
+  const [nivel, setNivel] = useState<Nivel>('medio');
   const [tempoMin, setTempoMin] = useState(30);
   const [tempoEditado, setTempoEditado] = useState(false);
   const [gerando, setGerando] = useState(false);
@@ -65,6 +68,7 @@ export default function SimuladosPage() {
     setConteudoId('');
     setAssuntosSel(new Set());
     setQtd(10);
+    setNivel('medio');
     setTempoMin(10 * MIN_POR_QUESTAO);
     setTempoEditado(false);
     setErro('');
@@ -95,6 +99,7 @@ export default function SimuladosPage() {
         assuntos: Array.from(assuntosSel),
         qtdQuestoes: qtd,
         tempoLimite: tempoMin * 60,
+        dificuldade: nivel,
       }),
     });
     if (!res.ok) {
@@ -151,7 +156,14 @@ export default function SimuladosPage() {
               variants={{ oculto: { opacity: 0, y: 12 }, visivel: { opacity: 1, y: 0 } }}
             >
               <div className="flex-1">
-                <p className="font-display font-semibold text-terra-900">{s.titulo}</p>
+                <div className="mb-0.5 flex items-center gap-2">
+                  <p className="font-display font-semibold text-terra-900">{s.titulo}</p>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-xs font-medium ${INFO_NIVEL[s.dificuldade]?.badge ?? INFO_NIVEL.medio.badge}`}
+                  >
+                    {INFO_NIVEL[s.dificuldade]?.rotulo ?? 'Médio'}
+                  </span>
+                </div>
                 <p className="text-sm tabular-nums text-terra-500">
                   {s.qtdQuestoes} questões · {Math.round(s.tempoLimite / 60)} min
                 </p>
@@ -222,6 +234,32 @@ export default function SimuladosPage() {
                 </div>
               </div>
             )}
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-terra-700">Nível de dificuldade</label>
+              <div className="grid grid-cols-3 gap-2">
+                {NIVEIS.map((n) => {
+                  const info = INFO_NIVEL[n];
+                  const ativo = nivel === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setNivel(n)}
+                      aria-pressed={ativo}
+                      className={`rounded-xl border-2 p-2.5 text-center transition-all duration-150 active:scale-[0.98] ${
+                        ativo
+                          ? 'border-salvia-600 bg-salvia-100/60 ring-1 ring-salvia-500'
+                          : 'border-terra-500/15 bg-creme-50 hover:border-salvia-500/40 hover:bg-salvia-100/30'
+                      }`}
+                    >
+                      <span className="block font-display font-semibold text-terra-900">{info.rotulo}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-terra-500">{INFO_NIVEL[nivel].descricao}</p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

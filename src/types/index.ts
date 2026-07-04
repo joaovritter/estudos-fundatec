@@ -58,6 +58,7 @@ export interface SimuladoDTO {
   assuntos: string[];
   qtdQuestoes: number;
   tempoLimite: number;
+  dificuldade: 'facil' | 'medio' | 'dificil';
   status: 'em_andamento' | 'finalizado';
   nota: number | null;
   acertos: number | null;

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getUserId } from '@/lib/auth';
 import { gerarJSON, schemaSimulado } from '@/lib/gemini';
 import { promptGerarSimulado } from '@/lib/prompts';
+import { calibragemPrompt, ehNivel } from '@/lib/dificuldade';
 import type { Alternativas } from '@/types';
 
 export const maxDuration = 120;
@@ -35,6 +36,7 @@ export async function GET(req: Request) {
       assuntos: s.assuntos,
       qtdQuestoes: s.qtdQuestoes,
       tempoLimite: s.tempoLimite,
+      dificuldade: s.dificuldade,
       status: s.status,
       nota: s.nota,
       acertos: s.acertos,
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
-    const { conteudoId, assuntos, qtdQuestoes, tempoLimite } = await req.json();
+    const { conteudoId, assuntos, qtdQuestoes, tempoLimite, dificuldade } = await req.json();
 
     if (
       !conteudoId ||
@@ -66,6 +68,8 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
     }
+
+    const nivel = ehNivel(dificuldade) ? dificuldade : 'medio';
 
     const conteudo = await prisma.conteudo.findFirst({
       where: { id: conteudoId, userId },
@@ -108,7 +112,7 @@ export async function POST(req: Request) {
       const restantes = Math.min(LOTE, qtdQuestoes - questoes.length);
       const { questoes: novas } = await gerarJSON<{ questoes: QuestaoGerada[] }>({
         prompt:
-          promptGerarSimulado(material, restantes) +
+          promptGerarSimulado(material, restantes, calibragemPrompt(nivel)) +
           (questoes.length > 0
             ? `\n\nIMPORTANTE: NÃO repita os pontos já cobrados nestas questões anteriores:\n${questoes.map((q) => `- ${q.enunciado}`).join('\n')}`
             : ''),
@@ -130,6 +134,7 @@ export async function POST(req: Request) {
         assuntos,
         qtdQuestoes: questoes.length,
         tempoLimite,
+        dificuldade: nivel,
         questoes: {
           create: questoes.map((q, i) => ({
             ordem: i + 1,

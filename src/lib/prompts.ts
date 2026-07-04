@@ -66,16 +66,21 @@ ${lista}
 Gere UMA NOVA variação (pergunta + resposta) sobre esse MESMO ponto, com um ângulo de cobrança DIFERENTE de todas as variações acima. Estilo FUNDATEC: literal, direto, focado em detalhe (prazo, autoridade, exceção, palavra-chave). Não invente informações que não estejam nas respostas acima.`;
 }
 
-export function promptGerarSimulado(assuntosComMaterial: string, qtd: number): string {
+export function promptGerarSimulado(
+  assuntosComMaterial: string,
+  qtd: number,
+  calibragem: string
+): string {
   return `Gere ${qtd} questões de múltipla escolha ESTILO FUNDATEC com base EXCLUSIVAMENTE no material de estudo abaixo (extraído do documento original).
 
 MATERIAL DE ESTUDO:
 ${assuntosComMaterial}
 
+${calibragem}
+
 Regras FUNDATEC obrigatórias:
 - 5 alternativas (A, B, C, D, E), apenas UMA correta.
 - Enunciado curto e direto.
-- Distratores com PEQUENAS alterações do texto correto (troca de prazo, autoridade, palavra).
 - Alternativas com estrutura e tamanho parecidos.
 - A justificativa aponta o detalhe literal que valida o gabarito e o que invalida os distratores.
 - Distribua as questões entre os assuntos do material.

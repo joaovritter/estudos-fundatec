@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Spinner from '@/components/ui/Spinner';
 import { IconeHistorico, IconeSetaDireita } from '@/components/ui/Icones';
+import { INFO_NIVEL, type Nivel } from '@/lib/dificuldade';
 
 interface SimuladoFinalizado {
   id: string;
   titulo: string;
   conteudoTitulo: string;
   qtdQuestoes: number;
+  dificuldade: Nivel;
   nota: number | null;
   acertos: number | null;
   total: number | null;
@@ -69,7 +71,14 @@ export default function HistoricoPage() {
                   {s.nota?.toFixed(1)}
                 </div>
                 <div className="flex-1">
-                  <p className="font-display font-semibold text-terra-900">{s.titulo}</p>
+                  <div className="mb-0.5 flex flex-wrap items-center gap-2">
+                    <p className="font-display font-semibold text-terra-900">{s.titulo}</p>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${INFO_NIVEL[s.dificuldade]?.badge ?? INFO_NIVEL.medio.badge}`}
+                    >
+                      {INFO_NIVEL[s.dificuldade]?.rotulo ?? 'Médio'}
+                    </span>
+                  </div>
                   <p className="text-sm tabular-nums text-terra-500">
                     {s.acertos}/{s.total} acertos ·{' '}
                     {s.finalizadoEm && new Date(s.finalizadoEm).toLocaleDateString('pt-BR')}

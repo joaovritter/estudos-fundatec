@@ -85,6 +85,7 @@ model Simulado {
   assuntos     String[]
   qtdQuestoes  Int
   tempoLimite  Int // segundos
+  dificuldade  String            @default("medio") // facil | medio | dificil
   status       String            @default("em_andamento") // em_andamento | finalizado
   nota         Float?
   acertos      Int?
