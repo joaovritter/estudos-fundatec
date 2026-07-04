@@ -144,27 +144,48 @@ export default function ConteudosPage() {
       const { conteudo } = await resConteudo.json();
       const nomes = assuntos.map((a) => a.nome);
 
-      if (gerarCards) {
-        setProgresso('Gerando flashcards com a IA… (pode levar um minuto)');
-        const r = await fetch('/api/ia/gerar-cards', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conteudoId: conteudo.id, pdfBase64, assuntos: nomes }),
-        });
-        if (!r.ok) throw new Error('Falha ao gerar flashcards');
-      }
-      if (gerarQA) {
-        setProgresso('Gerando perguntas & respostas com a IA… (pode levar um minuto)');
-        const r = await fetch('/api/ia/gerar-qa', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conteudoId: conteudo.id, pdfBase64, assuntos: nomes }),
-        });
-        if (!r.ok) throw new Error('Falha ao gerar Q&A');
+      // Geramos em LOTES de assuntos (não todos de uma vez): cada chamada à IA
+      // fica curta e não estoura o tempo limite da função (evita erro 504).
+      const LOTE = 2;
+      const lotes: string[][] = [];
+      for (let i = 0; i < nomes.length; i += LOTE) lotes.push(nomes.slice(i, i + LOTE));
+
+      let falhas = 0;
+
+      async function processar(rota: string, rotulo: string) {
+        let feitos = 0;
+        for (const lote of lotes) {
+          setProgresso(
+            `Gerando ${rotulo} com a IA… ${feitos}/${nomes.length} assuntos (${lote.join(', ')})`
+          );
+          try {
+            const r = await fetch(rota, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ conteudoId: conteudo.id, pdfBase64, assuntos: lote }),
+            });
+            if (!r.ok) falhas++;
+          } catch {
+            falhas++;
+          }
+          feitos += lote.length;
+        }
       }
 
-      setEtapa('pronto');
+      if (gerarCards) await processar('/api/ia/gerar-cards', 'flashcards');
+      if (gerarQA) await processar('/api/ia/gerar-qa', 'perguntas & respostas');
+
       await carregar();
+      if (falhas > 0) {
+        // Material parcial: parte dos lotes falhou, mas o que deu certo já está salvo.
+        setErro(
+          `Alguns trechos não foram gerados (${falhas} ${falhas === 1 ? 'lote' : 'lotes'}). ` +
+            'O restante já está salvo — você pode adicionar o material que faltou depois.'
+        );
+        setEtapa('assuntos');
+      } else {
+        setEtapa('pronto');
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro inesperado');
       setEtapa('assuntos');

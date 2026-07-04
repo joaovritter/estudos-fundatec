@@ -4,7 +4,7 @@ import { gerarJSON, schemaMapearAssuntos } from '@/lib/gemini';
 import { PROMPT_MAPEAR_ASSUNTOS } from '@/lib/prompts';
 import type { AssuntoMapeado } from '@/types';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // Só analisa o PDF e devolve os assuntos — nada é salvo ainda.
 // O usuário confirma/edita a lista antes de gerar material (evita gerar lixo).

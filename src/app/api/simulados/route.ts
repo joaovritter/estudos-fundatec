@@ -5,7 +5,7 @@ import { gerarJSON, schemaSimulado } from '@/lib/gemini';
 import { promptGerarSimulado } from '@/lib/prompts';
 import type { Alternativas } from '@/types';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface QuestaoGerada {
   enunciado: string;

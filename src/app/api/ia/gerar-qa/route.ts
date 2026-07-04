@@ -4,7 +4,7 @@ import { getUserId } from '@/lib/auth';
 import { gerarJSON, schemaGerarQA } from '@/lib/gemini';
 import { promptGerarQA } from '@/lib/prompts';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface BlocoGerado {
   assunto: string;

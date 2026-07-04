@@ -8,7 +8,7 @@ import {
 } from '@/lib/gemini';
 import { promptReformularCard, promptReformularQA } from '@/lib/prompts';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // Reformular card: gera nova versão e SUBSTITUI (padrão definido na spec).
 // Reformular Q&A: gera variação nova (versao = max + 1) e ADICIONA ao bloco.

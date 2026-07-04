@@ -4,7 +4,7 @@ import { getUserId } from '@/lib/auth';
 import { gerarJSON, schemaAvaliar } from '@/lib/gemini';
 import { promptAvaliarSimulado } from '@/lib/prompts';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // Feedback textual rico da IA — OPCIONAL (a correção em si é local e grátis).
 // O feedback gerado é persistido em cada questão para não chamar a IA de novo.

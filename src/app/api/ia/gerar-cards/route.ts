@@ -4,7 +4,7 @@ import { getUserId } from '@/lib/auth';
 import { gerarJSON, schemaGerarCards } from '@/lib/gemini';
 import { promptGerarFlashcards } from '@/lib/prompts';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface CardGerado {
   assunto: string;
