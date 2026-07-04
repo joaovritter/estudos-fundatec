@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
+import BarraProgresso from '@/components/ui/BarraProgresso';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import {
   IconeMais,
@@ -39,6 +40,8 @@ export default function ConteudosPage() {
   const [gerarQA, setGerarQA] = useState(true);
   const [erro, setErro] = useState('');
   const [progresso, setProgresso] = useState('');
+  const [progressoPct, setProgressoPct] = useState(0);
+  const [progressoDur, setProgressoDur] = useState(0.5);
 
   // edição / deleção
   const [editando, setEditando] = useState<ConteudoResumo | null>(null);
@@ -129,6 +132,8 @@ export default function ConteudosPage() {
     }
     setErro('');
     setEtapa('gerando');
+    setProgressoPct(0);
+    setProgressoDur(0.5);
     try {
       setProgresso('Criando conteúdo…');
       const resConteudo = await fetch('/api/conteudos', {
@@ -150,6 +155,10 @@ export default function ConteudosPage() {
       const lotes: string[][] = [];
       for (let i = 0; i < nomes.length; i += LOTE) lotes.push(nomes.slice(i, i + LOTE));
 
+      // Progresso: cada lote de cada tipo (cards/QA) é um passo confirmado.
+      const numTipos = (gerarCards ? 1 : 0) + (gerarQA ? 1 : 0);
+      const totalPassos = lotes.length * numTipos;
+      let passos = 0;
       let falhas = 0;
 
       async function processar(rota: string, rotulo: string) {
@@ -158,6 +167,10 @@ export default function ConteudosPage() {
           setProgresso(
             `Gerando ${rotulo} com a IA… ${feitos}/${nomes.length} assuntos (${lote.join(', ')})`
           );
+          // "Creep" otimista: a barra avança devagar em direção ao próximo marco
+          // enquanto a IA trabalha, para nunca parecer parada.
+          setProgressoDur(28);
+          setProgressoPct(((passos + 0.9) / totalPassos) * 100);
           try {
             const r = await fetch(rota, {
               method: 'POST',
@@ -168,13 +181,18 @@ export default function ConteudosPage() {
           } catch {
             falhas++;
           }
+          // Marco confirmado: salto rápido até a posição real.
+          passos += 1;
           feitos += lote.length;
+          setProgressoDur(0.4);
+          setProgressoPct((passos / totalPassos) * 100);
         }
       }
 
       if (gerarCards) await processar('/api/ia/gerar-cards', 'flashcards');
       if (gerarQA) await processar('/api/ia/gerar-qa', 'perguntas & respostas');
 
+      setProgressoPct(100);
       await carregar();
       if (falhas > 0) {
         // Material parcial: parte dos lotes falhou, mas o que deu certo já está salvo.
@@ -375,7 +393,20 @@ export default function ConteudosPage() {
           </div>
         )}
 
-        {etapa === 'gerando' && <Spinner texto={progresso} />}
+        {etapa === 'gerando' && (
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-terra-800">Processando com a IA</span>
+              <span className="font-mono tabular-nums text-terra-500">{Math.round(progressoPct)}%</span>
+            </div>
+            <BarraProgresso valor={progressoPct} duracao={progressoDur} />
+            <p className="text-sm text-terra-500">{progresso}</p>
+            <p className="text-xs text-terra-400">
+              Conteúdos com muitos assuntos podem levar alguns minutos. Pode deixar a aba aberta —
+              o material é salvo à medida que fica pronto.
+            </p>
+          </div>
+        )}
 
         {etapa === 'pronto' && (
           <div className="flex flex-col items-center gap-4 text-center">

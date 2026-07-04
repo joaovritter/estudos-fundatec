@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
+import BarraProgresso from '@/components/ui/BarraProgresso';
 import { IconeMais, IconeProva, IconeSetaDireita, IconeBrilho } from '@/components/ui/Icones';
 import type { ConteudoResumo } from '@/types';
 
@@ -35,6 +36,8 @@ export default function SimuladosPage() {
   const [tempoMin, setTempoMin] = useState(30);
   const [tempoEditado, setTempoEditado] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const [progSim, setProgSim] = useState(0);
+  const [progSimDur, setProgSimDur] = useState(0.5);
   const [erro, setErro] = useState('');
 
   const carregar = useCallback(async () => {
@@ -75,6 +78,15 @@ export default function SimuladosPage() {
     }
     setErro('');
     setGerando(true);
+    // Barra otimista: a geração é uma única chamada (o servidor gera em lotes),
+    // então o frontend não tem marcos — a barra sobe devagar até ~92% enquanto
+    // espera e completa quando a resposta chega. Tempo estimado ~4s/questão.
+    setProgSim(0);
+    setProgSimDur(0.4);
+    requestAnimationFrame(() => {
+      setProgSimDur(Math.max(20, qtd * 4));
+      setProgSim(92);
+    });
     const res = await fetch('/api/simulados', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,12 +97,14 @@ export default function SimuladosPage() {
         tempoLimite: tempoMin * 60,
       }),
     });
-    setGerando(false);
     if (!res.ok) {
+      setGerando(false);
       const data = await res.json().catch(() => ({}));
       setErro(data.error || 'Falha ao gerar o simulado.');
       return;
     }
+    setProgSimDur(0.4);
+    setProgSim(100);
     const { simulado } = await res.json();
     router.push(`/simulados/${simulado.id}`);
   }
@@ -152,7 +166,17 @@ export default function SimuladosPage() {
 
       <Modal aberto={aberto} onFechar={() => !gerando && setAberto(false)} titulo="Novo simulado" largura="max-w-xl">
         {gerando ? (
-          <Spinner texto="A IA está montando seu simulado estilo FUNDATEC… (pode levar um minuto)" />
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-terra-800">Montando seu simulado estilo FUNDATEC</span>
+              <span className="font-mono tabular-nums text-terra-500">{Math.round(progSim)}%</span>
+            </div>
+            <BarraProgresso valor={progSim} duracao={progSimDur} />
+            <p className="text-xs text-terra-400">
+              A IA está elaborando {qtd} {qtd === 1 ? 'questão' : 'questões'} com alternativas no
+              estilo da banca. Isso costuma levar de alguns segundos a um minuto.
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
             <div>

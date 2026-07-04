@@ -50,6 +50,15 @@ const config: Config = {
       transitionDuration: {
         DEFAULT: '150ms',
       },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 1.4s ease-in-out infinite',
+      },
     },
   },
   plugins: [],
