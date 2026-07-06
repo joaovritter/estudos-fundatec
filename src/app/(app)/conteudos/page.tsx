@@ -122,8 +122,9 @@ export default function ConteudosPage() {
         contentType: 'application/pdf',
       });
       setPdfUrl(blob.url);
-    } catch {
-      setErro('Falha ao enviar o PDF. Verifique a conexão e tente novamente.');
+    } catch (e) {
+      // Mostra a mensagem real do servidor (ex.: Blob não configurado)
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar o PDF. Verifique a conexão e tente novamente.');
       setNomeArquivo('');
     } finally {
       setEnviandoPdf(false);

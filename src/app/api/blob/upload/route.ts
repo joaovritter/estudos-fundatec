@@ -8,6 +8,18 @@ export async function POST(req: Request): Promise<NextResponse> {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
+  // Diagnóstico claro caso o Blob store não esteja conectado ao projeto.
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('blob upload: BLOB_READ_WRITE_TOKEN ausente no ambiente');
+    return NextResponse.json(
+      {
+        error:
+          'Armazenamento de PDF não configurado. Conecte um Blob store ao projeto na Vercel (Storage → Blob) e faça um novo deploy.',
+      },
+      { status: 503 }
+    );
+  }
+
   const body = (await req.json()) as HandleUploadBody;
 
   try {
@@ -24,6 +36,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
     return NextResponse.json(json);
   } catch (e) {
+    console.error('blob upload:', e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Falha no upload' },
       { status: 400 }
