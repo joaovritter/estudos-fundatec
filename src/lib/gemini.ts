@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, type Schema } from '@google/genai';
+import { get } from '@vercel/blob';
 import { SYSTEM_FUNDATEC } from '@/lib/prompts';
 
 const MODEL = 'gemini-2.5-flash';
@@ -163,8 +164,8 @@ interface ChamadaIA {
   schema: Schema;
   /** PDF em base64 — enviado como documento nativo ao Gemini (lê texto e escaneado). */
   pdfBase64?: string;
-  /** URL do PDF (Vercel Blob) — o servidor baixa e converte para base64. */
-  pdfUrl?: string;
+  /** pathname do PDF no Blob privado — o servidor lê via get() e converte p/ base64. */
+  pdfPathname?: string;
   /**
    * Orçamento de "thinking" do 2.5-flash. Default 0 = desligado, muito mais
    * rápido para extração estruturada. Tarefas que se beneficiam de raciocínio
@@ -173,11 +174,13 @@ interface ChamadaIA {
   thinkingBudget?: number;
 }
 
-/** Baixa um PDF de uma URL (Blob) e devolve em base64. */
-export async function pdfUrlParaBase64(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Falha ao baixar o PDF (${res.status})`);
-  const buf = Buffer.from(await res.arrayBuffer());
+/** Lê um PDF privado do Blob (por pathname) e devolve em base64. */
+export async function pdfPathnameParaBase64(pathname: string): Promise<string> {
+  const result = await get(pathname, { access: 'private' });
+  if (!result || result.statusCode !== 200) {
+    throw new Error('PDF não encontrado no Blob');
+  }
+  const buf = Buffer.from(await new Response(result.stream).arrayBuffer());
   return buf.toString('base64');
 }
 
@@ -206,9 +209,9 @@ export function mensagemErroIA(e: unknown, fallback: string): { error: string; s
   return { error: fallback, status: 500 };
 }
 
-export async function gerarJSON<T>({ prompt, schema, pdfBase64, pdfUrl, thinkingBudget = 0 }: ChamadaIA): Promise<T> {
+export async function gerarJSON<T>({ prompt, schema, pdfBase64, pdfPathname, thinkingBudget = 0 }: ChamadaIA): Promise<T> {
   const parts: any[] = [];
-  const base64 = pdfBase64 ?? (pdfUrl ? await pdfUrlParaBase64(pdfUrl) : undefined);
+  const base64 = pdfBase64 ?? (pdfPathname ? await pdfPathnameParaBase64(pdfPathname) : undefined);
   if (base64) {
     parts.push({ inlineData: { mimeType: 'application/pdf', data: base64 } });
   }

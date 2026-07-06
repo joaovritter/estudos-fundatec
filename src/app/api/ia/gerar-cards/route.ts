@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const { cards } = await gerarJSON<{ cards: CardGerado[] }>({
       prompt: promptGerarFlashcards(assuntos),
       schema: schemaGerarCards,
-      pdfUrl: conteudo.pdfUrl,
+      pdfPathname: conteudo.pdfUrl,
     });
 
     await prisma.card.createMany({

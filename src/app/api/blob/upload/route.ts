@@ -4,10 +4,10 @@ import { getUserId } from '@/lib/auth';
 
 export const maxDuration = 60;
 
-// Upload do PDF pelo SERVIDOR (não client upload). O put() do @vercel/blob v2
-// autentica automaticamente via OIDC (VERCEL_OIDC_TOKEN + BLOB_STORE_ID) quando
-// não há BLOB_READ_WRITE_TOKEN — que é o modelo novo do Blob store.
-// O client upload (handleUpload) NÃO suporta OIDC, por isso não é usado aqui.
+// Upload do PDF pelo SERVIDOR até o Vercel Blob (store PRIVADO). O put() do
+// @vercel/blob v2 autentica via OIDC (VERCEL_OIDC_TOKEN + BLOB_STORE_ID),
+// sem BLOB_READ_WRITE_TOKEN. Guardamos o pathname; o conteúdo é servido de
+// volta pela rota /api/blob/get (blob privado exige leitura autenticada).
 export async function POST(req: Request): Promise<NextResponse> {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
@@ -24,12 +24,13 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const nomeSeguro = file.name.replace(/[^\w.\-]+/g, '_');
     const blob = await put(`pdfs/${userId}/${nomeSeguro}`, file, {
-      access: 'public',
+      access: 'private',
       contentType: 'application/pdf',
       addRandomSuffix: true,
     });
 
-    return NextResponse.json({ url: blob.url });
+    // Devolve o pathname (chave para ler depois via get()).
+    return NextResponse.json({ pathname: blob.pathname });
   } catch (e) {
     console.error('blob upload:', e);
     return NextResponse.json(

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const { blocos } = await gerarJSON<{ blocos: BlocoGerado[] }>({
       prompt: promptGerarQA(assuntos),
       schema: schemaGerarQA,
-      pdfUrl: conteudo.pdfUrl,
+      pdfPathname: conteudo.pdfUrl,
     });
 
     // Mapeia nome do assunto → id (case-insensitive para tolerar variações da IA)

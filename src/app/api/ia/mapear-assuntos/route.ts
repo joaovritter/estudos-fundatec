@@ -13,13 +13,13 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
-    const { pdfUrl } = await req.json();
-    if (!pdfUrl) return NextResponse.json({ error: 'PDF não enviado' }, { status: 400 });
+    const { pdfPathname } = await req.json();
+    if (!pdfPathname) return NextResponse.json({ error: 'PDF não enviado' }, { status: 400 });
 
     const resultado = await gerarJSON<{ assuntos: AssuntoMapeado[] }>({
       prompt: PROMPT_MAPEAR_ASSUNTOS,
       schema: schemaMapearAssuntos,
-      pdfUrl,
+      pdfPathname,
     });
 
     return NextResponse.json(resultado);

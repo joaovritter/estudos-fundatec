@@ -44,7 +44,7 @@ export default function ConteudosPage() {
   const [etapa, setEtapa] = useState<Etapa>('upload');
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfPathname, setPdfPathname] = useState('');
   const [numPaginas, setNumPaginas] = useState<number | null>(null);
   const [nomeArquivo, setNomeArquivo] = useState('');
   const [enviandoPdf, setEnviandoPdf] = useState(false);
@@ -81,7 +81,7 @@ export default function ConteudosPage() {
     setEtapa('upload');
     setTitulo('');
     setDescricao('');
-    setPdfUrl('');
+    setPdfPathname('');
     setNumPaginas(null);
     setNomeArquivo('');
     setEnviandoPdf(false);
@@ -92,8 +92,8 @@ export default function ConteudosPage() {
     setWizardAberto(true);
   }
 
-  // Ao escolher o arquivo, já enviamos direto para o Vercel Blob (o navegador
-  // fala com o Blob, sem passar o PDF pelo servidor). Mostra status do envio.
+  // Ao escolher o arquivo, enviamos pelo servidor (/api/blob/upload) até o
+  // Vercel Blob privado. Guardamos o pathname e mostramos status do envio.
   async function aoEscolherPdf(e: React.ChangeEvent<HTMLInputElement>) {
     setErro('');
     const arquivo = e.target.files?.[0];
@@ -108,7 +108,7 @@ export default function ConteudosPage() {
       return;
     }
 
-    setPdfUrl('');
+    setPdfPathname('');
     setNumPaginas(null);
     setNomeArquivo(arquivo.name);
     if (!titulo) setTitulo(arquivo.name.replace(/\.pdf$/i, ''));
@@ -122,8 +122,8 @@ export default function ConteudosPage() {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || 'Falha ao enviar o PDF');
       }
-      const { url } = await res.json();
-      setPdfUrl(url);
+      const { pathname } = await res.json();
+      setPdfPathname(pathname);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar o PDF. Verifique a conexão e tente novamente.');
       setNomeArquivo('');
@@ -133,7 +133,7 @@ export default function ConteudosPage() {
   }
 
   async function mapearAssuntos() {
-    if (!pdfUrl || !titulo.trim()) {
+    if (!pdfPathname || !titulo.trim()) {
       setErro('Envie um PDF e dê um título.');
       return;
     }
@@ -144,7 +144,7 @@ export default function ConteudosPage() {
       res = await fetch('/api/ia/mapear-assuntos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfUrl }),
+        body: JSON.stringify({ pdfPathname }),
       });
     } catch {
       // erro de rede / conexão perdida durante a análise
@@ -185,7 +185,7 @@ export default function ConteudosPage() {
           titulo,
           descricao,
           assuntos: assuntos.map((a) => a.nome),
-          pdfUrl,
+          pdfUrl: pdfPathname, // campo pdfUrl no banco guarda o pathname do Blob
           numPaginas,
         }),
       });
@@ -400,7 +400,7 @@ export default function ConteudosPage() {
                 Enviando <span className="font-medium">{nomeArquivo}</span> para o servidor…
               </div>
             )}
-            {pdfUrl && !enviandoPdf && (
+            {pdfPathname && !enviandoPdf && (
               <div className="space-y-3 rounded-xl border border-salvia-500/30 bg-salvia-100/50 p-3">
                 <div className="flex items-center gap-2 text-sm">
                   <IconeCheck className="h-5 w-5 shrink-0 text-acerto" />
@@ -409,7 +409,11 @@ export default function ConteudosPage() {
                     {numPaginas != null ? `${numPaginas} ${numPaginas === 1 ? 'página' : 'páginas'}.` : 'lendo páginas…'}
                   </span>
                 </div>
-                <VisualizadorPDF url={pdfUrl} largura={340} onCarregado={setNumPaginas} />
+                <VisualizadorPDF
+                  url={`/api/blob/get?pathname=${encodeURIComponent(pdfPathname)}`}
+                  largura={340}
+                  onCarregado={setNumPaginas}
+                />
               </div>
             )}
 
@@ -422,7 +426,7 @@ export default function ConteudosPage() {
               <input className="campo" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             </div>
             {erro && <p className="text-sm text-erro">{erro}</p>}
-            <button className="btn-primario w-full" onClick={mapearAssuntos} disabled={!pdfUrl || enviandoPdf}>
+            <button className="btn-primario w-full" onClick={mapearAssuntos} disabled={!pdfPathname || enviandoPdf}>
               <IconeBrilho className="h-[18px] w-[18px]" /> Analisar PDF
             </button>
           </div>
@@ -555,7 +559,9 @@ export default function ConteudosPage() {
         titulo={vendoPdf?.titulo}
         largura="max-w-2xl"
       >
-        {vendoPdf?.pdfUrl && <VisualizadorPDF url={vendoPdf.pdfUrl} largura={560} />}
+        {vendoPdf?.pdfUrl && (
+          <VisualizadorPDF url={`/api/blob/get?pathname=${encodeURIComponent(vendoPdf.pdfUrl)}`} largura={560} />
+        )}
       </Modal>
     </div>
   );
