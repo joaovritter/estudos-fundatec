@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUserId } from '@/lib/auth';
-import { gerarJSON, schemaMapearAssuntos } from '@/lib/gemini';
+import { gerarJSON, mensagemErroIA, schemaMapearAssuntos } from '@/lib/gemini';
 import { PROMPT_MAPEAR_ASSUNTOS } from '@/lib/prompts';
 import type { AssuntoMapeado } from '@/types';
 
@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json(resultado);
   } catch (e) {
     console.error('mapear-assuntos:', e);
-    return NextResponse.json({ error: 'Falha ao analisar o PDF. Tente novamente.' }, { status: 500 });
+    const { error, status } = mensagemErroIA(e, 'Falha ao analisar o PDF. Tente novamente.');
+    return NextResponse.json({ error }, { status });
   }
 }

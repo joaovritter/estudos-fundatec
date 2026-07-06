@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserId } from '@/lib/auth';
-import { gerarJSON, schemaGerarQA } from '@/lib/gemini';
+import { gerarJSON, mensagemErroIA, schemaGerarQA } from '@/lib/gemini';
 import { promptGerarQA } from '@/lib/prompts';
 
 export const maxDuration = 120;
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, totalBlocos });
   } catch (e) {
     console.error('gerar-qa:', e);
-    return NextResponse.json({ error: 'Falha ao gerar perguntas. Tente novamente.' }, { status: 500 });
+    const { error, status } = mensagemErroIA(e, 'Falha ao gerar perguntas. Tente novamente.');
+    return NextResponse.json({ error }, { status });
   }
 }

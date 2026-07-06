@@ -21,7 +21,9 @@ import {
 } from '@/components/ui/Icones';
 import type { AssuntoMapeado, ConteudoResumo } from '@/types';
 
-const MAX_PDF_MB = 4;
+// Limite prático: o PDF vira base64 (+~33%) dentro de um JSON, e o corpo de
+// requisição da Vercel é cortado em ~4.5MB. 3MB de arquivo mantém folga segura.
+const MAX_PDF_MB = 3;
 
 type Etapa = 'upload' | 'mapeando' | 'assuntos' | 'gerando' | 'pronto';
 
@@ -84,7 +86,11 @@ export default function ConteudosPage() {
       return;
     }
     if (arquivo.size > MAX_PDF_MB * 1024 * 1024) {
-      setErro(`PDF muito grande (máx. ${MAX_PDF_MB}MB nesta versão). Divida o arquivo e envie em partes.`);
+      const tam = (arquivo.size / 1024 / 1024).toFixed(1);
+      setErro(
+        `Este PDF tem ${tam}MB e o limite atual é ${MAX_PDF_MB}MB. Divida em partes (ex.: por capítulo/título) ` +
+          'e envie cada parte como um conteúdo — o material de todos fica salvo do mesmo jeito.'
+      );
       return;
     }
     const buffer = await arquivo.arrayBuffer();
@@ -105,11 +111,19 @@ export default function ConteudosPage() {
     }
     setErro('');
     setEtapa('mapeando');
-    const res = await fetch('/api/ia/mapear-assuntos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pdfBase64 }),
-    });
+    let res: Response;
+    try {
+      res = await fetch('/api/ia/mapear-assuntos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64 }),
+      });
+    } catch {
+      // erro de rede / conexão perdida durante o envio do PDF
+      setErro('Conexão interrompida ao enviar o PDF. Verifique sua internet e tente de novo.');
+      setEtapa('upload');
+      return;
+    }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErro(data.error || 'Falha ao analisar o PDF.');
@@ -160,6 +174,7 @@ export default function ConteudosPage() {
       const totalPassos = lotes.length * numTipos;
       let passos = 0;
       let falhas = 0;
+      let msgServidor = ''; // primeira mensagem de erro específica vinda da API
 
       async function processar(rota: string, rotulo: string) {
         let feitos = 0;
@@ -177,7 +192,13 @@ export default function ConteudosPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ conteudoId: conteudo.id, pdfBase64, assuntos: lote }),
             });
-            if (!r.ok) falhas++;
+            if (!r.ok) {
+              falhas++;
+              if (!msgServidor) {
+                const d = await r.json().catch(() => ({}));
+                if (d.error) msgServidor = d.error;
+              }
+            }
           } catch {
             falhas++;
           }
@@ -195,10 +216,12 @@ export default function ConteudosPage() {
       setProgressoPct(100);
       await carregar();
       if (falhas > 0) {
-        // Material parcial: parte dos lotes falhou, mas o que deu certo já está salvo.
+        // Se veio uma mensagem específica do servidor (ex: chave da IA expirada),
+        // mostra ela; senão, informa material parcial (o que deu certo foi salvo).
         setErro(
-          `Alguns trechos não foram gerados (${falhas} ${falhas === 1 ? 'lote' : 'lotes'}). ` +
-            'O restante já está salvo — você pode adicionar o material que faltou depois.'
+          msgServidor ||
+            `Alguns trechos não foram gerados (${falhas} ${falhas === 1 ? 'lote' : 'lotes'}). ` +
+              'O restante já está salvo — você pode adicionar o material que faltou depois.'
         );
         setEtapa('assuntos');
       } else {

@@ -163,25 +163,63 @@ interface ChamadaIA {
   schema: Schema;
   /** PDF em base64 — enviado como documento nativo ao Gemini (lê texto e escaneado). */
   pdfBase64?: string;
+  /**
+   * Orçamento de "thinking" do 2.5-flash. Default 0 = desligado, muito mais
+   * rápido para extração estruturada. Tarefas que se beneficiam de raciocínio
+   * (elaborar questões de simulado) podem passar um valor maior.
+   */
+  thinkingBudget?: number;
 }
 
-export async function gerarJSON<T>({ prompt, schema, pdfBase64 }: ChamadaIA): Promise<T> {
+/** Erro de autenticação da IA — chave ausente, inválida ou expirada. */
+export class ErroAuthIA extends Error {
+  constructor() {
+    super('Chave da IA inválida ou expirada');
+    this.name = 'ErroAuthIA';
+  }
+}
+
+function ehErroAuth(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /401|UNAUTHENTICATED|API key|invalid authentication|permission denied|API_KEY_INVALID/i.test(msg);
+}
+
+/** Converte um erro de chamada à IA numa mensagem+status prontos para a API route. */
+export function mensagemErroIA(e: unknown, fallback: string): { error: string; status: number } {
+  if (e instanceof ErroAuthIA) {
+    return {
+      error:
+        'A chave da IA (GEMINI_API_KEY) está inválida ou expirada. Gere uma nova em aistudio.google.com/apikey e atualize nas variáveis de ambiente.',
+      status: 502,
+    };
+  }
+  return { error: fallback, status: 500 };
+}
+
+export async function gerarJSON<T>({ prompt, schema, pdfBase64, thinkingBudget = 0 }: ChamadaIA): Promise<T> {
   const parts: any[] = [];
   if (pdfBase64) {
     parts.push({ inlineData: { mimeType: 'application/pdf', data: pdfBase64 } });
   }
   parts.push({ text: prompt });
 
-  const res = await ai().models.generateContent({
-    model: MODEL,
-    contents: [{ role: 'user', parts }],
-    config: {
-      systemInstruction: SYSTEM_FUNDATEC,
-      responseMimeType: 'application/json',
-      responseSchema: schema,
-      temperature: 0.4,
-    },
-  });
+  let res;
+  try {
+    res = await ai().models.generateContent({
+      model: MODEL,
+      contents: [{ role: 'user', parts }],
+      config: {
+        systemInstruction: SYSTEM_FUNDATEC,
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        temperature: 0.4,
+        thinkingConfig: { thinkingBudget },
+      },
+    });
+  } catch (e) {
+    if (ehErroAuth(e)) throw new ErroAuthIA();
+    throw e;
+  }
 
   const texto = res.text;
   if (!texto) throw new Error('Resposta vazia da IA');

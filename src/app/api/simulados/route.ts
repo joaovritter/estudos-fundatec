@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserId } from '@/lib/auth';
-import { gerarJSON, schemaSimulado } from '@/lib/gemini';
+import { gerarJSON, mensagemErroIA, schemaSimulado } from '@/lib/gemini';
 import { promptGerarSimulado } from '@/lib/prompts';
 import { calibragemPrompt, ehNivel } from '@/lib/dificuldade';
 import type { Alternativas } from '@/types';
@@ -150,6 +150,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ simulado: { id: simulado.id } }, { status: 201 });
   } catch (e) {
     console.error('criar simulado:', e);
-    return NextResponse.json({ error: 'Falha ao gerar o simulado. Tente novamente.' }, { status: 500 });
+    const { error, status } = mensagemErroIA(e, 'Falha ao gerar o simulado. Tente novamente.');
+    return NextResponse.json({ error }, { status });
   }
 }

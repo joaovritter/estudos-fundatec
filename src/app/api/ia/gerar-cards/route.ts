@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserId } from '@/lib/auth';
-import { gerarJSON, schemaGerarCards } from '@/lib/gemini';
+import { gerarJSON, mensagemErroIA, schemaGerarCards } from '@/lib/gemini';
 import { promptGerarFlashcards } from '@/lib/prompts';
 
 export const maxDuration = 120;
@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, total: cards.length });
   } catch (e) {
     console.error('gerar-cards:', e);
-    return NextResponse.json({ error: 'Falha ao gerar flashcards. Tente novamente.' }, { status: 500 });
+    const { error, status } = mensagemErroIA(e, 'Falha ao gerar flashcards. Tente novamente.');
+    return NextResponse.json({ error }, { status });
   }
 }
