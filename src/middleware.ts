@@ -27,5 +27,9 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|jpg|ico)$).*)'],
+  // Exclui estáticos do middleware, incluindo o worker do pdfjs (.mjs) servido
+  // de /public — senão a requisição do worker é redirecionada para /login.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|jpg|jpeg|gif|ico|mjs|js|css|woff|woff2)$).*)',
+  ],
 };
