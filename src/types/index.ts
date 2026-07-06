@@ -30,6 +30,8 @@ export interface ConteudoResumo {
   id: string;
   titulo: string;
   descricao: string | null;
+  pdfUrl: string | null;
+  numPaginas: number | null;
   createdAt: string;
   _count: { cards: number; assuntos: number; simulados: number };
   assuntos: { id: string; nome: string }[];

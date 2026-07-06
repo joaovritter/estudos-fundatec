@@ -19,17 +19,20 @@ model User {
 }
 
 // Um "Conteudo" = um PDF/material enviado pelo usuário.
-// O PDF em si não é guardado permanentemente; guardamos o que a IA extraiu.
+// Guardamos o material que a IA extraiu E o PDF original no Vercel Blob
+// (pdfUrl), para visualização a qualquer momento e reprocessamento.
 model Conteudo {
-  id        String     @id @default(cuid())
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  titulo    String
-  descricao String?
-  assuntos  Assunto[]
-  cards     Card[]
-  simulados Simulado[]
-  createdAt DateTime   @default(now())
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo     String
+  descricao  String?
+  pdfUrl     String? // URL do PDF no Vercel Blob
+  numPaginas Int? // total de páginas do PDF
+  assuntos   Assunto[]
+  cards      Card[]
+  simulados  Simulado[]
+  createdAt  DateTime   @default(now())
 }
 
 // Assuntos mapeados dentro de um conteúdo (ex: "Sanções Disciplinares")

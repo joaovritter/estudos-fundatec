@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { del } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { getUserId } from '@/lib/auth';
 
@@ -48,6 +49,15 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const existente = await conteudoDoUsuario(params.id, userId);
   if (!existente) return NextResponse.json({ error: 'Conteúdo não encontrado' }, { status: 404 });
+
+  // Apaga o PDF do Blob (não bloqueia a deleção do conteúdo se falhar)
+  if (existente.pdfUrl) {
+    try {
+      await del(existente.pdfUrl);
+    } catch (e) {
+      console.error('falha ao apagar PDF do Blob:', e);
+    }
+  }
 
   await prisma.conteudo.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });

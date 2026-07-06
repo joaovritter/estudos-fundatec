@@ -18,18 +18,19 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
-    const { conteudoId, pdfBase64, assuntos } = await req.json();
-    if (!conteudoId || !pdfBase64 || !Array.isArray(assuntos) || assuntos.length === 0) {
+    const { conteudoId, assuntos } = await req.json();
+    if (!conteudoId || !Array.isArray(assuntos) || assuntos.length === 0) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
     }
 
     const conteudo = await prisma.conteudo.findFirst({ where: { id: conteudoId, userId } });
     if (!conteudo) return NextResponse.json({ error: 'Conteúdo não encontrado' }, { status: 404 });
+    if (!conteudo.pdfUrl) return NextResponse.json({ error: 'PDF do conteúdo não encontrado' }, { status: 400 });
 
     const { cards } = await gerarJSON<{ cards: CardGerado[] }>({
       prompt: promptGerarFlashcards(assuntos),
       schema: schemaGerarCards,
-      pdfBase64,
+      pdfUrl: conteudo.pdfUrl,
     });
 
     await prisma.card.createMany({

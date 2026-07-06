@@ -163,12 +163,22 @@ interface ChamadaIA {
   schema: Schema;
   /** PDF em base64 — enviado como documento nativo ao Gemini (lê texto e escaneado). */
   pdfBase64?: string;
+  /** URL do PDF (Vercel Blob) — o servidor baixa e converte para base64. */
+  pdfUrl?: string;
   /**
    * Orçamento de "thinking" do 2.5-flash. Default 0 = desligado, muito mais
    * rápido para extração estruturada. Tarefas que se beneficiam de raciocínio
    * (elaborar questões de simulado) podem passar um valor maior.
    */
   thinkingBudget?: number;
+}
+
+/** Baixa um PDF de uma URL (Blob) e devolve em base64. */
+export async function pdfUrlParaBase64(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Falha ao baixar o PDF (${res.status})`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  return buf.toString('base64');
 }
 
 /** Erro de autenticação da IA — chave ausente, inválida ou expirada. */
@@ -196,10 +206,11 @@ export function mensagemErroIA(e: unknown, fallback: string): { error: string; s
   return { error: fallback, status: 500 };
 }
 
-export async function gerarJSON<T>({ prompt, schema, pdfBase64, thinkingBudget = 0 }: ChamadaIA): Promise<T> {
+export async function gerarJSON<T>({ prompt, schema, pdfBase64, pdfUrl, thinkingBudget = 0 }: ChamadaIA): Promise<T> {
   const parts: any[] = [];
-  if (pdfBase64) {
-    parts.push({ inlineData: { mimeType: 'application/pdf', data: pdfBase64 } });
+  const base64 = pdfBase64 ?? (pdfUrl ? await pdfUrlParaBase64(pdfUrl) : undefined);
+  if (base64) {
+    parts.push({ inlineData: { mimeType: 'application/pdf', data: base64 } });
   }
   parts.push({ text: prompt });
 

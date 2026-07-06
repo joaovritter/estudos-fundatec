@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  const { titulo, descricao, assuntos } = await req.json();
+  const { titulo, descricao, assuntos, pdfUrl, numPaginas } = await req.json();
   if (!titulo || !Array.isArray(assuntos) || assuntos.length === 0) {
     return NextResponse.json({ error: 'Título e assuntos são obrigatórios' }, { status: 400 });
   }
@@ -33,6 +33,8 @@ export async function POST(req: Request) {
       userId,
       titulo,
       descricao: descricao || null,
+      pdfUrl: typeof pdfUrl === 'string' ? pdfUrl : null,
+      numPaginas: typeof numPaginas === 'number' ? numPaginas : null,
       assuntos: {
         create: assuntos.map((nome: string, i: number) => ({ nome, ordem: i })),
       },

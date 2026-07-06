@@ -2,11 +2,19 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { upload } from '@vercel/blob/client';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
 import BarraProgresso from '@/components/ui/BarraProgresso';
 import ConfirmDialog from '@/components/ConfirmDialog';
+
+// Visualizador só no cliente (pdfjs usa APIs de browser).
+const VisualizadorPDF = dynamic(() => import('@/components/VisualizadorPDF'), {
+  ssr: false,
+  loading: () => <Spinner texto="Carregando visualizador…" />,
+});
 import {
   IconeMais,
   IconeLivro,
@@ -17,13 +25,14 @@ import {
   IconeBrilho,
   IconeCheck,
   IconeX,
+  IconeOlho,
   IconeSetaEsquerda,
 } from '@/components/ui/Icones';
 import type { AssuntoMapeado, ConteudoResumo } from '@/types';
 
-// Limite prático: o PDF vira base64 (+~33%) dentro de um JSON, e o corpo de
-// requisição da Vercel é cortado em ~4.5MB. 3MB de arquivo mantém folga segura.
-const MAX_PDF_MB = 3;
+// O PDF vai direto do navegador para o Vercel Blob (não passa pelo corpo do
+// servidor), então o limite é generoso — cobre PDFs longos e escaneados.
+const MAX_PDF_MB = 8;
 
 type Etapa = 'upload' | 'mapeando' | 'assuntos' | 'gerando' | 'pronto';
 
@@ -36,7 +45,10 @@ export default function ConteudosPage() {
   const [etapa, setEtapa] = useState<Etapa>('upload');
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [pdfBase64, setPdfBase64] = useState('');
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [numPaginas, setNumPaginas] = useState<number | null>(null);
+  const [nomeArquivo, setNomeArquivo] = useState('');
+  const [enviandoPdf, setEnviandoPdf] = useState(false);
   const [assuntos, setAssuntos] = useState<AssuntoMapeado[]>([]);
   const [gerarCards, setGerarCards] = useState(true);
   const [gerarQA, setGerarQA] = useState(true);
@@ -45,11 +57,12 @@ export default function ConteudosPage() {
   const [progressoPct, setProgressoPct] = useState(0);
   const [progressoDur, setProgressoDur] = useState(0.5);
 
-  // edição / deleção
+  // edição / deleção / visualização
   const [editando, setEditando] = useState<ConteudoResumo | null>(null);
   const [editTitulo, setEditTitulo] = useState('');
   const [editDescricao, setEditDescricao] = useState('');
   const [deletando, setDeletando] = useState<ConteudoResumo | null>(null);
+  const [vendoPdf, setVendoPdf] = useState<ConteudoResumo | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -69,7 +82,10 @@ export default function ConteudosPage() {
     setEtapa('upload');
     setTitulo('');
     setDescricao('');
-    setPdfBase64('');
+    setPdfUrl('');
+    setNumPaginas(null);
+    setNomeArquivo('');
+    setEnviandoPdf(false);
     setAssuntos([]);
     setGerarCards(true);
     setGerarQA(true);
@@ -77,6 +93,8 @@ export default function ConteudosPage() {
     setWizardAberto(true);
   }
 
+  // Ao escolher o arquivo, já enviamos direto para o Vercel Blob (o navegador
+  // fala com o Blob, sem passar o PDF pelo servidor). Mostra status do envio.
   async function aoEscolherPdf(e: React.ChangeEvent<HTMLInputElement>) {
     setErro('');
     const arquivo = e.target.files?.[0];
@@ -87,26 +105,34 @@ export default function ConteudosPage() {
     }
     if (arquivo.size > MAX_PDF_MB * 1024 * 1024) {
       const tam = (arquivo.size / 1024 / 1024).toFixed(1);
-      setErro(
-        `Este PDF tem ${tam}MB e o limite atual é ${MAX_PDF_MB}MB. Divida em partes (ex.: por capítulo/título) ` +
-          'e envie cada parte como um conteúdo — o material de todos fica salvo do mesmo jeito.'
-      );
+      setErro(`Este PDF tem ${tam}MB e o limite é ${MAX_PDF_MB}MB. Divida em partes e envie cada uma como um conteúdo.`);
       return;
     }
-    const buffer = await arquivo.arrayBuffer();
-    let binario = '';
-    const bytes = new Uint8Array(buffer);
-    const CHUNK = 0x8000;
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      binario += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-    }
-    setPdfBase64(btoa(binario));
+
+    setPdfUrl('');
+    setNumPaginas(null);
+    setNomeArquivo(arquivo.name);
     if (!titulo) setTitulo(arquivo.name.replace(/\.pdf$/i, ''));
+
+    setEnviandoPdf(true);
+    try {
+      const blob = await upload(arquivo.name, arquivo, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
+        contentType: 'application/pdf',
+      });
+      setPdfUrl(blob.url);
+    } catch {
+      setErro('Falha ao enviar o PDF. Verifique a conexão e tente novamente.');
+      setNomeArquivo('');
+    } finally {
+      setEnviandoPdf(false);
+    }
   }
 
   async function mapearAssuntos() {
-    if (!pdfBase64 || !titulo.trim()) {
-      setErro('Escolha um PDF e dê um título.');
+    if (!pdfUrl || !titulo.trim()) {
+      setErro('Envie um PDF e dê um título.');
       return;
     }
     setErro('');
@@ -116,11 +142,11 @@ export default function ConteudosPage() {
       res = await fetch('/api/ia/mapear-assuntos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64 }),
+        body: JSON.stringify({ pdfUrl }),
       });
     } catch {
-      // erro de rede / conexão perdida durante o envio do PDF
-      setErro('Conexão interrompida ao enviar o PDF. Verifique sua internet e tente de novo.');
+      // erro de rede / conexão perdida durante a análise
+      setErro('Conexão interrompida ao analisar o PDF. Verifique sua internet e tente de novo.');
       setEtapa('upload');
       return;
     }
@@ -157,6 +183,8 @@ export default function ConteudosPage() {
           titulo,
           descricao,
           assuntos: assuntos.map((a) => a.nome),
+          pdfUrl,
+          numPaginas,
         }),
       });
       if (!resConteudo.ok) throw new Error('Falha ao salvar conteúdo');
@@ -190,7 +218,7 @@ export default function ConteudosPage() {
             const r = await fetch(rota, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ conteudoId: conteudo.id, pdfBase64, assuntos: lote }),
+              body: JSON.stringify({ conteudoId: conteudo.id, assuntos: lote }),
             });
             if (!r.ok) {
               falhas++;
@@ -318,6 +346,7 @@ export default function ConteudosPage() {
               {c.descricao && <p className="mb-3 text-sm text-terra-500">{c.descricao}</p>}
               <p className="mb-4 text-xs text-terra-500">
                 {c._count.assuntos} assuntos · {c._count.cards} cards · {c._count.simulados} simulados
+                {c.numPaginas != null && <> · {c.numPaginas} pág.</>}
               </p>
               <div className="mt-auto flex gap-2">
                 <Link href={`/conteudos/${c.id}/cards`} className="btn-secundario flex-1 text-sm">
@@ -326,6 +355,16 @@ export default function ConteudosPage() {
                 <Link href={`/conteudos/${c.id}/qa`} className="btn-secundario flex-1 text-sm">
                   <IconeConversa className="h-[18px] w-[18px] text-salvia-600" /> Q&A
                 </Link>
+                {c.pdfUrl && (
+                  <button
+                    className="btn-secundario !px-3 text-sm"
+                    onClick={() => setVendoPdf(c)}
+                    aria-label={`Ver PDF de ${c.titulo}`}
+                    title="Ver PDF"
+                  >
+                    <IconeOlho className="h-[18px] w-[18px] text-salvia-600" />
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}
@@ -343,8 +382,35 @@ export default function ConteudosPage() {
           <div className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-terra-700">Arquivo PDF (máx. {MAX_PDF_MB}MB)</label>
-              <input type="file" accept="application/pdf" onChange={aoEscolherPdf} className="campo" />
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={aoEscolherPdf}
+                disabled={enviandoPdf}
+                className="campo"
+              />
             </div>
+
+            {/* Status do envio do PDF */}
+            {enviandoPdf && (
+              <div className="flex items-center gap-2 rounded-xl bg-creme-200 p-3 text-sm text-terra-700">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-salvia-500 border-t-transparent" />
+                Enviando <span className="font-medium">{nomeArquivo}</span> para o servidor…
+              </div>
+            )}
+            {pdfUrl && !enviandoPdf && (
+              <div className="space-y-3 rounded-xl border border-salvia-500/30 bg-salvia-100/50 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <IconeCheck className="h-5 w-5 shrink-0 text-acerto" />
+                  <span className="flex-1 text-terra-800">
+                    <span className="font-medium">PDF enviado.</span>{' '}
+                    {numPaginas != null ? `${numPaginas} ${numPaginas === 1 ? 'página' : 'páginas'}.` : 'lendo páginas…'}
+                  </span>
+                </div>
+                <VisualizadorPDF url={pdfUrl} largura={340} onCarregado={setNumPaginas} />
+              </div>
+            )}
+
             <div>
               <label className="mb-1 block text-sm font-medium text-terra-700">Título</label>
               <input className="campo" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Estatuto dos Militares — Lei 10.990" />
@@ -354,8 +420,8 @@ export default function ConteudosPage() {
               <input className="campo" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             </div>
             {erro && <p className="text-sm text-erro">{erro}</p>}
-            <button className="btn-primario w-full" onClick={mapearAssuntos} disabled={!pdfBase64}>
-              Analisar PDF →
+            <button className="btn-primario w-full" onClick={mapearAssuntos} disabled={!pdfUrl || enviandoPdf}>
+              <IconeBrilho className="h-[18px] w-[18px]" /> Analisar PDF
             </button>
           </div>
         )}
@@ -472,13 +538,23 @@ export default function ConteudosPage() {
       <ConfirmDialog
         aberto={!!deletando}
         titulo="Deletar conteúdo?"
-        mensagem={`"${deletando?.titulo}" será deletado junto com todos os seus cards, perguntas e simulados. Essa ação não pode ser desfeita.`}
+        mensagem={`"${deletando?.titulo}" será deletado junto com todos os seus cards, perguntas, simulados e o PDF. Essa ação não pode ser desfeita.`}
         textoConfirmar="Deletar tudo"
         perigo
         carregando={ocupado}
         onConfirmar={confirmarDelecao}
         onCancelar={() => setDeletando(null)}
       />
+
+      {/* Visualização do PDF */}
+      <Modal
+        aberto={!!vendoPdf}
+        onFechar={() => setVendoPdf(null)}
+        titulo={vendoPdf?.titulo}
+        largura="max-w-2xl"
+      >
+        {vendoPdf?.pdfUrl && <VisualizadorPDF url={vendoPdf.pdfUrl} largura={560} />}
+      </Modal>
     </div>
   );
 }
