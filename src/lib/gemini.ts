@@ -2,7 +2,15 @@ import { GoogleGenAI, Type, type Schema } from '@google/genai';
 import { get } from '@vercel/blob';
 import { SYSTEM_FUNDATEC } from '@/lib/prompts';
 
-const MODEL = 'gemini-2.5-flash';
+// Cascata de modelos free: cada um tem cota diária própria. Ao esgotar (429),
+// tentamos o próximo — multiplicando a cota total disponível. Todos leem PDF e
+// suportam responseSchema. Os 2.0 não aceitam thinkingConfig (tratado abaixo).
+const MODELOS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+];
 
 let _ai: GoogleGenAI | null = null;
 function ai(): GoogleGenAI {
@@ -224,15 +232,6 @@ function ehErroQuota(e: unknown): boolean {
   return s === 429 || /RESOURCE_EXHAUSTED|exceeded your current quota|quota|rate.?limit/i.test(msg);
 }
 
-/** Extrai o retryDelay (segundos) que a API do Gemini sugere no erro 429. */
-function retryDelaySegundos(e: unknown): number | null {
-  const msg = e instanceof Error ? e.message : String(e);
-  const m = msg.match(/retryDelay"?:\s*"?(\d+)(?:\.\d+)?s/i) || msg.match(/retry in\s+(\d+)/i);
-  return m ? Number(m[1]) : null;
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 /** Converte um erro de chamada à IA numa mensagem+status prontos para a API route. */
 export function mensagemErroIA(e: unknown, fallback: string): { error: string; status: number } {
   if (e instanceof ErroAuthIA) {
@@ -245,7 +244,7 @@ export function mensagemErroIA(e: unknown, fallback: string): { error: string; s
   if (ehErroQuota(e)) {
     return {
       error:
-        'Limite de uso diário da IA atingido (cota grátis do Gemini: 20 gerações/dia). Aguarde a cota renovar (meia-noite no fuso do Pacífico) ou ative o faturamento da API do Gemini para aumentar o limite.',
+        'Limite de uso diário da IA atingido — todos os modelos grátis do Gemini esgotaram a cota de hoje. Aguarde a cota renovar (por volta das 4h da manhã, horário de Brasília) ou ative o faturamento da API do Gemini para aumentar o limite.',
       status: 429,
     };
   }
@@ -260,36 +259,39 @@ export async function gerarJSON<T>({ prompt, schema, pdfBase64, pdfPathname, thi
   }
   parts.push({ text: prompt });
 
-  // Uma tentativa de retry em caso de 429 (ajuda no limite por minuto; o retry
-  // usa o retryDelay que a própria API sugere, limitado a 20s para caber no
-  // maxDuration). O teto diário só se resolve com faturamento na API.
-  let res;
-  for (let tentativa = 0; ; tentativa++) {
+  // Percorre a cascata de modelos: no 429 (cota), troca imediatamente para o
+  // próximo modelo (que tem cota própria). Só falha quando TODOS esgotam.
+  let ultimoErroQuota: unknown = null;
+  for (let i = 0; i < MODELOS.length; i++) {
+    const model = MODELOS[i];
+    const config: Record<string, unknown> = {
+      systemInstruction: SYSTEM_FUNDATEC,
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      temperature: 0.4,
+    };
+    // thinkingConfig só existe nos modelos 2.5.
+    if (model.startsWith('gemini-2.5')) config.thinkingConfig = { thinkingBudget };
+
     try {
-      res = await ai().models.generateContent({
-        model: MODEL,
+      const res = await ai().models.generateContent({
+        model,
         contents: [{ role: 'user', parts }],
-        config: {
-          systemInstruction: SYSTEM_FUNDATEC,
-          responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.4,
-          thinkingConfig: { thinkingBudget },
-        },
+        config,
       });
-      break;
+      const texto = res.text;
+      if (!texto) throw new Error('Resposta vazia da IA');
+      return parseJsonSeguro<T>(texto);
     } catch (e) {
       if (ehErroAuth(e)) throw new ErroAuthIA();
-      if (ehErroQuota(e) && tentativa === 0) {
-        const espera = Math.min(retryDelaySegundos(e) ?? 12, 20);
-        await sleep(espera * 1000);
-        continue;
+      if (ehErroQuota(e)) {
+        ultimoErroQuota = e;
+        continue; // tenta o próximo modelo da cascata
       }
       throw e;
     }
   }
 
-  const texto = res.text;
-  if (!texto) throw new Error('Resposta vazia da IA');
-  return parseJsonSeguro<T>(texto);
+  // Todos os modelos esgotaram a cota — propaga como erro de quota.
+  throw ultimoErroQuota ?? new Error('Falha na geração');
 }

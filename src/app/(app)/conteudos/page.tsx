@@ -197,55 +197,44 @@ export default function ConteudosPage() {
       const { conteudo } = await resConteudo.json();
       const nomes = assuntos.map((a) => a.nome);
 
-      // Geramos em LOTES de assuntos (não todos de uma vez): cada chamada à IA
-      // fica curta e não estoura o tempo limite da função (evita erro 504).
-      const LOTE = 2;
+      // Geramos em LOTES de assuntos, e cards + Q&A numa ÚNICA chamada por lote
+      // (economiza cota da IA). Lote de 3 assuntos equilibra custo e tempo.
+      const LOTE = 3;
       const lotes: string[][] = [];
       for (let i = 0; i < nomes.length; i += LOTE) lotes.push(nomes.slice(i, i + LOTE));
 
-      // Progresso: cada lote de cada tipo (cards/QA) é um passo confirmado.
-      const numTipos = (gerarCards ? 1 : 0) + (gerarQA ? 1 : 0);
-      const totalPassos = lotes.length * numTipos;
+      const totalPassos = lotes.length; // uma chamada por lote
       let passos = 0;
+      let feitos = 0;
       let falhas = 0;
       let msgServidor = ''; // primeira mensagem de erro específica vinda da API
 
-      async function processar(rota: string, rotulo: string) {
-        let feitos = 0;
-        for (const lote of lotes) {
-          setProgresso(
-            `Gerando ${rotulo} com a IA… ${feitos}/${nomes.length} assuntos (${lote.join(', ')})`
-          );
-          // "Creep" otimista: a barra avança devagar em direção ao próximo marco
-          // enquanto a IA trabalha, para nunca parecer parada.
-          setProgressoDur(28);
-          setProgressoPct(((passos + 0.9) / totalPassos) * 100);
-          try {
-            const r = await fetch(rota, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ conteudoId: conteudo.id, assuntos: lote }),
-            });
-            if (!r.ok) {
-              falhas++;
-              if (!msgServidor) {
-                const d = await r.json().catch(() => ({}));
-                if (d.error) msgServidor = d.error;
-              }
-            }
-          } catch {
+      for (const lote of lotes) {
+        setProgresso(`Gerando material com a IA… ${feitos}/${nomes.length} assuntos (${lote.join(', ')})`);
+        // "Creep" otimista: a barra avança devagar em direção ao próximo marco.
+        setProgressoDur(28);
+        setProgressoPct(((passos + 0.9) / totalPassos) * 100);
+        try {
+          const r = await fetch('/api/ia/gerar-material', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conteudoId: conteudo.id, assuntos: lote, gerarCards, gerarQA }),
+          });
+          if (!r.ok) {
             falhas++;
+            if (!msgServidor) {
+              const d = await r.json().catch(() => ({}));
+              if (d.error) msgServidor = d.error;
+            }
           }
-          // Marco confirmado: salto rápido até a posição real.
-          passos += 1;
-          feitos += lote.length;
-          setProgressoDur(0.4);
-          setProgressoPct((passos / totalPassos) * 100);
+        } catch {
+          falhas++;
         }
+        passos += 1;
+        feitos += lote.length;
+        setProgressoDur(0.4);
+        setProgressoPct((passos / totalPassos) * 100);
       }
-
-      if (gerarCards) await processar('/api/ia/gerar-cards', 'flashcards');
-      if (gerarQA) await processar('/api/ia/gerar-qa', 'perguntas & respostas');
 
       setProgressoPct(100);
       await carregar();

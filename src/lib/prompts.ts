@@ -45,6 +45,30 @@ As respostas devem ser literais ao texto, citando artigo/dispositivo quando exis
 O campo "assunto" da resposta deve ser exatamente o nome do assunto tratado.`;
 }
 
+// Prompt combinado: gera cards E/OU Q&A numa única chamada (economiza cota).
+export function promptGerarMaterial(
+  assuntos: string[],
+  comCards: boolean,
+  comQA: boolean
+): string {
+  const partes: string[] = [
+    `Com base no documento PDF fornecido, gere material de estudo para os seguintes assuntos: ${assuntos.join(', ')}.`,
+  ];
+  if (comCards) {
+    partes.push(`FLASHCARDS ("cards"): 4 a 8 por assunto (frente/verso), cobrindo o mais provável em prova FUNDATEC (prazos, autoridades, competências, sanções, exceções).
+- FRENTE: pergunta curta e direta OU conceito a completar.
+- VERSO: resposta literal ao texto, citando o artigo/dispositivo quando existir.
+- "assunto" de cada card = exatamente um dos assuntos acima.`);
+  }
+  if (comQA) {
+    partes.push(`PERGUNTAS & RESPOSTAS ("blocos"): para CADA assunto, 3 a 6 blocos. Cada bloco cobre UM ponto e tem EXATAMENTE 3 variações sobre o mesmo ponto:
+- Variação 1: regra geral / conceito. Variação 2: exceção ou requisito. Variação 3: prazo, competência ou autoridade.
+- Se não houver exceção/prazo, a variação muda o ângulo (outro detalhe literal do mesmo dispositivo).
+- Respostas literais ao texto, citando artigo/dispositivo quando existir. "assunto" = nome exato do assunto.`);
+  }
+  return partes.join('\n\n');
+}
+
 export function promptReformularCard(frente: string, verso: string): string {
   return `Reformule o flashcard abaixo. Gere UM novo card sobre O MESMO ponto do conteúdo, mas mudando o foco ou o ângulo da cobrança (ex: se perguntava o prazo, pergunte a autoridade; se era pergunta direta, vire "complete a frase").
 
