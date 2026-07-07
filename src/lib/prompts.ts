@@ -66,6 +66,16 @@ ${lista}
 Gere UMA NOVA variação (pergunta + resposta) sobre esse MESMO ponto, com um ângulo de cobrança DIFERENTE de todas as variações acima. Estilo FUNDATEC: literal, direto, focado em detalhe (prazo, autoridade, exceção, palavra-chave). Não invente informações que não estejam nas respostas acima.`;
 }
 
+export const PROMPT_GERAR_RESUMO = `Com base no documento PDF fornecido, gere um RESUMO DE ESTUDO completo e bem organizado, ideal para revisão de concurso público (estilo FUNDATEC).
+
+Estrutura:
+- "titulo": um título claro para o resumo (ex: o nome da lei/tema).
+- "introducao": 2 a 4 frases explicando, em visão geral, do que trata o documento e por que importa para a prova.
+- "topicos": os principais tópicos do documento. Para CADA tópico: um "titulo" curto e uma lista de "pontos" (bullets) objetivos e literais, destacando prazos, autoridades competentes, requisitos, exceções e sanções — o que a banca cobra. Entre 4 e 10 tópicos, cada um com 3 a 8 pontos.
+- "palavrasChave": 8 a 15 termos-chave/expressões que o candidato precisa memorizar (ex: nomes de institutos, prazos, autoridades).
+
+Use SOMENTE o conteúdo do documento. Seja fiel ao texto (não invente). Escreva de forma clara e direta, própria para memorização.`;
+
 export function promptGerarSimulado(
   assuntosComMaterial: string,
   qtd: number,

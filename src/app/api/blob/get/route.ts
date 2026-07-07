@@ -20,16 +20,25 @@ export async function GET(req: NextRequest) {
   });
   if (!dono) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-  const result = await get(pathname, { access: 'private' });
-  if (!result || result.statusCode !== 200) {
-    return new NextResponse('Não encontrado', { status: 404 });
+  try {
+    const result = await get(pathname, { access: 'private' });
+    if (!result) {
+      console.error('blob get: not found', { pathname });
+      return new NextResponse('Não encontrado', { status: 404 });
+    }
+    if (result.statusCode !== 200) {
+      console.error('blob get: statusCode', result.statusCode, { pathname });
+      return new NextResponse('Não encontrado', { status: 404 });
+    }
+    return new NextResponse(result.stream, {
+      headers: {
+        'Content-Type': result.blob.contentType || 'application/pdf',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'private, max-age=3600',
+      },
+    });
+  } catch (e) {
+    console.error('blob get erro:', e, { pathname });
+    return new NextResponse('Erro ao carregar PDF', { status: 500 });
   }
-
-  return new NextResponse(result.stream, {
-    headers: {
-      'Content-Type': result.blob.contentType || 'application/pdf',
-      'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'private, max-age=3600',
-    },
-  });
 }

@@ -36,8 +36,8 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
       >
         <LogoMarca className="mx-auto mb-3 h-10 w-10 text-ambar-600" />
-        <h1 className="mb-1 text-center font-display text-3xl font-bold text-terra-900">
-          Motor de <span className="grifo">Estudos</span>
+        <h1 className="mb-1 text-center font-display text-4xl font-bold text-terra-900">
+          <span className="grifo">Studie</span>
         </h1>
         <p className="mb-6 text-center text-sm text-terra-500">Estudos inteligentes estilo FUNDATEC</p>
 

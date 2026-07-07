@@ -27,12 +27,26 @@ model Conteudo {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   titulo     String
   descricao  String?
-  pdfUrl     String? // URL do PDF no Vercel Blob
+  pdfUrl     String? // pathname do PDF no Vercel Blob (privado)
   numPaginas Int? // total de páginas do PDF
   assuntos   Assunto[]
   cards      Card[]
   simulados  Simulado[]
+  resumo     Resumo?
   createdAt  DateTime   @default(now())
+}
+
+// Resumo de estudo de um conteúdo (1 por conteúdo), gerado pela IA e editável.
+model Resumo {
+  id            String   @id @default(cuid())
+  conteudoId    String   @unique
+  conteudo      Conteudo @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  titulo        String
+  introducao    String
+  topicos       Json // [{ titulo: string, pontos: string[] }]
+  palavrasChave String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 // Assuntos mapeados dentro de um conteúdo (ex: "Sanções Disciplinares")

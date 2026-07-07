@@ -100,6 +100,27 @@ export const schemaReformularQA: Schema = {
   required: ['pergunta', 'resposta'],
 };
 
+export const schemaResumo: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    titulo: { type: Type.STRING },
+    introducao: { type: Type.STRING },
+    topicos: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          titulo: { type: Type.STRING },
+          pontos: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ['titulo', 'pontos'],
+      },
+    },
+    palavrasChave: { type: Type.ARRAY, items: { type: Type.STRING } },
+  },
+  required: ['titulo', 'introducao', 'topicos', 'palavrasChave'],
+};
+
 export const schemaSimulado: Schema = {
   type: Type.OBJECT,
   properties: {

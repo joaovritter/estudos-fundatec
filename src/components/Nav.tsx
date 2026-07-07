@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { LogoMarca, IconeLivro, IconeProva, IconeHistorico, IconeSair } from '@/components/ui/Icones';
+import { LogoMarca, IconeLivro, IconeResumo, IconeProva, IconeHistorico, IconeSair } from '@/components/ui/Icones';
 
 const LINKS = [
   { href: '/conteudos', rotulo: 'Conteúdos', Icone: IconeLivro },
+  { href: '/resumos', rotulo: 'Resumos', Icone: IconeResumo },
   { href: '/simulados', rotulo: 'Simulados', Icone: IconeProva },
   { href: '/simulados/historico', rotulo: 'Histórico', Icone: IconeHistorico },
 ];
@@ -22,7 +23,7 @@ export default function Nav({ nomeUsuario }: { nomeUsuario: string }) {
           className="flex min-h-[44px] items-center gap-2 font-display text-lg font-bold text-salvia-700"
         >
           <LogoMarca className="h-6 w-6 text-ambar-600" />
-          Motor de Estudos
+          Studie
         </Link>
 
         <nav className="flex gap-1" aria-label="Navegação principal">

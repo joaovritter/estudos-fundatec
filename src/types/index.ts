@@ -37,6 +37,23 @@ export interface ConteudoResumo {
   assuntos: { id: string; nome: string }[];
 }
 
+export interface TopicoResumo {
+  titulo: string;
+  pontos: string[];
+}
+
+export interface ResumoDTO {
+  id: string;
+  conteudoId: string;
+  conteudoTitulo?: string;
+  titulo: string;
+  introducao: string;
+  topicos: TopicoResumo[];
+  palavrasChave: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type Alternativas = { A: string; B: string; C: string; D: string; E: string };
 
 export interface QuestaoDTO {

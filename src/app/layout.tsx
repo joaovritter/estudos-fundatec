@@ -18,8 +18,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Motor de Estudos FUNDATEC',
-  description: 'Estudos inteligentes para concursos públicos — flashcards, Q&A e simulados estilo FUNDATEC',
+  title: 'Studie',
+  description: 'Estudos inteligentes para concursos públicos — flashcards, Q&A, resumos e simulados estilo FUNDATEC',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
