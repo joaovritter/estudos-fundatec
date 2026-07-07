@@ -218,6 +218,21 @@ function ehErroAuth(e: unknown): boolean {
   return /401|UNAUTHENTICATED|API key|invalid authentication|permission denied|API_KEY_INVALID/i.test(msg);
 }
 
+function ehErroQuota(e: unknown): boolean {
+  const s = (e as { status?: number })?.status;
+  const msg = e instanceof Error ? e.message : String(e);
+  return s === 429 || /RESOURCE_EXHAUSTED|exceeded your current quota|quota|rate.?limit/i.test(msg);
+}
+
+/** Extrai o retryDelay (segundos) que a API do Gemini sugere no erro 429. */
+function retryDelaySegundos(e: unknown): number | null {
+  const msg = e instanceof Error ? e.message : String(e);
+  const m = msg.match(/retryDelay"?:\s*"?(\d+)(?:\.\d+)?s/i) || msg.match(/retry in\s+(\d+)/i);
+  return m ? Number(m[1]) : null;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /** Converte um erro de chamada à IA numa mensagem+status prontos para a API route. */
 export function mensagemErroIA(e: unknown, fallback: string): { error: string; status: number } {
   if (e instanceof ErroAuthIA) {
@@ -225,6 +240,13 @@ export function mensagemErroIA(e: unknown, fallback: string): { error: string; s
       error:
         'A chave da IA (GEMINI_API_KEY) está inválida ou expirada. Gere uma nova em aistudio.google.com/apikey e atualize nas variáveis de ambiente.',
       status: 502,
+    };
+  }
+  if (ehErroQuota(e)) {
+    return {
+      error:
+        'Limite de uso diário da IA atingido (cota grátis do Gemini: 20 gerações/dia). Aguarde a cota renovar (meia-noite no fuso do Pacífico) ou ative o faturamento da API do Gemini para aumentar o limite.',
+      status: 429,
     };
   }
   return { error: fallback, status: 500 };
@@ -238,22 +260,33 @@ export async function gerarJSON<T>({ prompt, schema, pdfBase64, pdfPathname, thi
   }
   parts.push({ text: prompt });
 
+  // Uma tentativa de retry em caso de 429 (ajuda no limite por minuto; o retry
+  // usa o retryDelay que a própria API sugere, limitado a 20s para caber no
+  // maxDuration). O teto diário só se resolve com faturamento na API.
   let res;
-  try {
-    res = await ai().models.generateContent({
-      model: MODEL,
-      contents: [{ role: 'user', parts }],
-      config: {
-        systemInstruction: SYSTEM_FUNDATEC,
-        responseMimeType: 'application/json',
-        responseSchema: schema,
-        temperature: 0.4,
-        thinkingConfig: { thinkingBudget },
-      },
-    });
-  } catch (e) {
-    if (ehErroAuth(e)) throw new ErroAuthIA();
-    throw e;
+  for (let tentativa = 0; ; tentativa++) {
+    try {
+      res = await ai().models.generateContent({
+        model: MODEL,
+        contents: [{ role: 'user', parts }],
+        config: {
+          systemInstruction: SYSTEM_FUNDATEC,
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+          temperature: 0.4,
+          thinkingConfig: { thinkingBudget },
+        },
+      });
+      break;
+    } catch (e) {
+      if (ehErroAuth(e)) throw new ErroAuthIA();
+      if (ehErroQuota(e) && tentativa === 0) {
+        const espera = Math.min(retryDelaySegundos(e) ?? 12, 20);
+        await sleep(espera * 1000);
+        continue;
+      }
+      throw e;
+    }
   }
 
   const texto = res.text;
