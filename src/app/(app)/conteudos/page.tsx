@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
-import { uploadPresigned } from '@vercel/blob/client';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
 import BarraProgresso from '@/components/ui/BarraProgresso';
@@ -30,9 +29,9 @@ import {
 } from '@/components/ui/Icones';
 import type { AssuntoMapeado, ConteudoResumo } from '@/types';
 
-// O PDF vai direto do navegador ao Blob (upload presigned), sem passar pelo
-// corpo do servidor — por isso o limite é generoso.
-const MAX_PDF_MB = 20;
+// O PDF sobe pelo servidor até o Blob (persistência confiável). O corpo de
+// requisição da Vercel é limitado a ~4.5MB, então 4MB é o teto seguro.
+const MAX_PDF_MB = 4;
 
 type Etapa = 'upload' | 'mapeando' | 'assuntos' | 'gerando' | 'pronto';
 
@@ -119,13 +118,15 @@ export default function ConteudosPage() {
 
     setEnviandoPdf(true);
     try {
-      const nomeSeguro = arquivo.name.replace(/[^\w.\-]+/g, '_');
-      const pathname = `pdfs/${crypto.randomUUID()}-${nomeSeguro}`;
-      const result = await uploadPresigned(pathname, arquivo, {
-        access: 'private',
-        handleUploadUrl: '/api/blob/upload',
-      });
-      setPdfPathname(result.pathname);
+      const form = new FormData();
+      form.append('file', arquivo);
+      const res = await fetch('/api/blob/upload', { method: 'POST', body: form });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Falha ao enviar o PDF');
+      }
+      const { pathname } = await res.json();
+      setPdfPathname(pathname);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar o PDF. Verifique a conexão e tente novamente.');
       setNomeArquivo('');
